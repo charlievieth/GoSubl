@@ -26,10 +26,10 @@ INSTALL_EXE = about.MARGO_EXE
 def gs_init(m={}):
     """Called by GoSublime.py::plugin_loaded
         m = {
-                    'version': VERSION,
-                    'ann': ANN,
-                    'margo_exe': MARGO_EXE,
-                }
+                'version': VERSION,
+                'ann': ANN,
+                'margo_exe': MARGO_EXE,
+            }
     """
 
     global INSTALL_VERSION
