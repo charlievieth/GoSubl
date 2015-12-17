@@ -745,6 +745,7 @@ def dval(v, d):
 
     return d
 
+
 def tm_path(name):
     d = {
         '9o': 'syntax/GoSublime-9o.tmLanguage',
@@ -762,6 +763,7 @@ def tm_path(name):
 
     return 'Packages/GoSublime/%s' % d[name]
 
+
 def packages_dir():
     """Returns the path of the Sublime Text User Package ("Packages/User").
     """
@@ -771,8 +773,10 @@ def packages_dir():
         set_attr('gs.packages_dir', fn)
     return fn
 
+
 def dist_path(*a):
     return os.path.join(packages_dir(), 'GoSublime', *a)
+
 
 def mkdirp(fn):
     """Recursively creates a directory rooted at fn, if directory fn does not
@@ -794,20 +798,26 @@ def _home_path(*paths):
     return os.path.join(packages_dir(), 'User', 'GoSublime', about.PLATFORM, *paths)
 
 
-def home_dir_path(*a):
-    fn = _home_path(*a)
+def home_dir_path(*path):
+    """Recursively creates a directory rooted at the GoSublime platform specific
+    home directory joined with *path.
+
+    For example if *path equals 'bin' and the platform is 'osx-x64', home_path
+    creates a directory at 'Sublime Text 3/Packages/User/GoSublime/osx-x64/bin'.
+    """
+    fn = _home_path(*path)
     mkdirp(fn)
     return fn
 
 
-def home_path(*paths):
-    """Recursively creates a directory rooted at the GoSublime platform specific
-    home directory joined with *paths.
+def home_path(*path):
+    """Recursively creates the directory rooted at the directory of *path,
+    within the GoSublime platform specific home directory.
 
-    For example if *paths equals 'bin' and the platform is 'osx-x64', home_path
-    creates a directory at 'Sublime Text 3/Packages/User/GoSublime/osx-x64/bin'.
+    For example if *path is ('bin', 'margo.exe') and the platform is 'osx-x64',
+    home_path creates a directory at: 'Packages/User/GoSublime/osx-x64/bin'.
     """
-    fn = _home_path(*paths)
+    fn = _home_path(*path)
     mkdirp(os.path.dirname(fn))
     return fn
 
