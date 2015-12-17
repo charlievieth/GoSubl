@@ -22,10 +22,20 @@ TAG = about.VERSION
 INSTALL_VERSION = about.VERSION
 INSTALL_EXE = about.MARGO_EXE
 
+
 def gs_init(m={}):
+	"""Called by GoSublime.py::plugin_loaded
+		m = {
+					'version': VERSION,
+					'ann': ANN,
+					'margo_exe': MARGO_EXE,
+				}
+	"""
+
 	global INSTALL_VERSION
 	global INSTALL_EXE
 
+	# Kill server on process exit.
 	atexit.register(killSrv)
 
 	version = m.get('version')
@@ -36,9 +46,14 @@ def gs_init(m={}):
 	if margo_exe:
 		INSTALL_EXE = margo_exe
 
+	# install_version recorded in 'GoSublime-aux.sublime-settings'
 	aso_install_vesion = gs.aso().get('install_version', '')
+
 	f = lambda: install(aso_install_vesion, False)
+	# GsQ handles threaded processes.
+	# Install latest version.
 	gsq.do('GoSublime', f, msg='Installing MarGo', set_status=False)
+
 
 class Request(object):
 	def __init__(self, f, method='', token=''):
@@ -56,17 +71,24 @@ class Request(object):
 			'token': self.token,
 		}
 
+
 def _inst_state():
+	"""Returns install state?
+	"""
 	return gs.attr(_inst_name(), '')
+
 
 def _inst_name():
 	return 'mg9.install.%s' % INSTALL_VERSION
 
+
 def _margo_src():
 	return gs.dist_path('margo9')
 
+
 def _margo_bin(exe=''):
  	return gs.home_path('bin', exe or INSTALL_EXE)
+
 
 def sanity_check_sl(sl):
 	n = 0
@@ -81,6 +103,7 @@ def sanity_check_sl(sl):
 	b = os.path.expanduser(a)
 
 	return [t % (k, gs.ustr(v).replace(b, a).replace('\n', '\n%s' % indent)) for k,v in sl]
+
 
 def sanity_check(env={}, error_log=False):
 	if not env:
@@ -118,23 +141,31 @@ def sanity_check(env={}, error_log=False):
 
 	return sl
 
+
 def _sb(s):
 	bdir = gs.home_dir_path('bin')
 	if s.startswith(bdir):
 		s = '~bin%s' % (s[len(bdir):])
 	return s
 
+
 def _tp(s):
 	return (_sb(s), ('ok' if os.path.exists(s) else 'missing'))
 
+
 def _bins_exist():
 	return os.path.exists(_margo_bin())
+
 
 def maybe_install():
 	if _inst_state() == '' and not _bins_exist():
 		install('', True)
 
+
 def install(aso_install_vesion, force_install):
+	"""Install GoSublime margo.
+	"""
+
 	global INSTALL_EXE
 
 	if _inst_state() != "":
@@ -261,6 +292,7 @@ def install(aso_install_vesion, force_install):
 		except Exception:
 			report_x()
 
+
 def calltip(fn, src, pos, quiet, f):
 	tid = ''
 	if not quiet:
@@ -275,11 +307,13 @@ def calltip(fn, src, pos, quiet, f):
 
 	return acall('gocode_calltip', _complete_opts(fn, src, pos, True), cb)
 
+
 def complete(fn, src, pos):
 	builtins = (gs.setting('autocomplete_builtins') is True or gs.setting('complete_builtins') is True)
 	res, err = bcall('gocode_complete', _complete_opts(fn, src, pos, builtins))
 	res = gs.dval(res.get('Candidates'), [])
 	return res, err
+
 
 def _complete_opts(fn, src, pos, builtins):
 	nv = sh.env()
@@ -297,6 +331,7 @@ def _complete_opts(fn, src, pos, builtins):
 			'GOPATH': nv.get('GOPATH', ''),
 		},
 	}
+
 
 def fmt(fn, src):
 	st = gs.settings_dict()
@@ -603,6 +638,9 @@ def _read_stdout(proc):
 		proc = None
 
 def killSrv():
+	"""Kills server on process exit, registered by 'gs_init'.
+	"""
+
 	p = gs.del_attr(PROC_ATTR_NAME)
 	if p:
 		try:

@@ -113,12 +113,14 @@ NAME_PREFIXES = {
 	'interface': u'\u00A1',
 }
 
+# TODO: Update via margo
 GOARCHES = [
 	'386',
 	'amd64',
 	'arm',
 ]
 
+# TODO: Update via margo
 GOOSES = [
 	'darwin',
 	'freebsd',
@@ -207,25 +209,44 @@ def popen(args, stdout=PIPE, stderr=PIPE, shell=False, environ={}, cwd=None, buf
 	return Popen(args, stdout=stdout, stderr=stderr, stdin=PIPE, startupinfo=STARTUP_INFO,
 		shell=shell, env=ev, cwd=cwd, preexec_fn=setsid, bufsize=bufsize)
 
+
 def is_a(v, base):
+	"""Returns if v is an instance of type(base).
+	"""
 	return isinstance(v, type(base))
 
+
 def is_a_string(v):
+	"""Returns if v is an instance of basestring or str.
+	"""
 	try:
 		return isinstance(v, basestring)
 	except NameError:
 		return isinstance(v, str)
 
+
 def settings_obj():
 	return sublime.load_settings("GoSublime.sublime-settings")
 
+
 def aso():
+	"""
+	GoSublime-aux.sublime-settings
+	Location: "Packages/User"
+	Contents (JSON):
+		- 9o command history: "9o.hist./$PATH": [$COMMANDS]
+		- ann:                "a14.02.25-1"
+		- install_version:    "r14.12.06-1"
+		- version:            "r14.12.06-1"
+	"""
 	return sublime.load_settings("GoSublime-aux.sublime-settings")
 
 def save_aso():
 	return sublime.save_settings("GoSublime-aux.sublime-settings")
 
 def settings_dict():
+	"""Returns a copy of the settings dictionary '_settings'.
+	"""
 	m = copy.copy(_settings)
 
 	for k in m:
@@ -669,11 +690,13 @@ def traceback(domain='GoSublime'):
 def show_traceback(domain):
 	show_output(domain, traceback(), replace=False, merge_domain=False)
 
+
 def maybe_unicode_str(s):
 	try:
 		return isinstance(s, unicode)
 	except NameError:
 		return isinstance(s, str)
+
 
 def ustr(s):
 	if maybe_unicode_str(s):
@@ -687,6 +710,7 @@ def ustr(s):
 
 	return str_decode(s, 'utf-8', 'replace')
 
+
 def astr(s):
 	if maybe_unicode_str(s):
 		if PY3K:
@@ -694,6 +718,7 @@ def astr(s):
 		return s.encode('utf-8')
 
 	return str(s)
+
 
 def lst(*a):
 	l = []
@@ -704,8 +729,14 @@ def lst(*a):
 			l.append(v)
 	return l
 
+
 def dval(v, d):
+	"""Default Value: returns v if v is not None and of type d,
+	otherwise d is returned.
+	"""
 	if v is not None:
+		# is_a_string matches both: 'basestring' and 'str'.
+		# so a simple is_a compare does not always work.
 		if is_a_string(d) and is_a_string(v):
 			return v
 
