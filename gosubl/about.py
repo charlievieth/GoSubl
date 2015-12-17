@@ -1,6 +1,8 @@
 import re
 import sublime
 
+# GoSublime Globals
+
 ANN = 'a14.02.25-1'
 VERSION = 'r14.12.06-1'
 VERSION_PAT = re.compile(r'\d{2}[.]\d{2}[.]\d{2}-\d+', re.IGNORECASE)
@@ -12,3 +14,7 @@ MARGO_EXE_PREFIX = 'gosublime.margo_'
 MARGO_EXE_SUFFIX = '.exe'
 MARGO_EXE = MARGO_EXE_PREFIX+VERSION+'_'+DEFAULT_GO_VERSION+MARGO_EXE_SUFFIX
 MARGO_EXE_PAT = re.compile(r'^gosublime\.margo.*\.exe$', re.IGNORECASE)
+
+# CEV: Dev Globals
+
+FORCE_INSTALL = False

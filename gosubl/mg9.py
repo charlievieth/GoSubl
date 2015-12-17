@@ -49,7 +49,10 @@ def gs_init(m={}):
     # install_version recorded in 'GoSublime-aux.sublime-settings'
     aso_install_vesion = gs.aso().get('install_version', '')
 
-    f = lambda: install(aso_install_vesion, False)
+    # WARN: Dev only
+    force_install = about.FORCE_INSTALL is True
+
+    f = lambda: install(aso_install_vesion, force_install)
     # GsQ handles threaded processes.
     # Install latest version.
     gsq.do('GoSublime', f, msg='Installing MarGo', set_status=False)
