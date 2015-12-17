@@ -1,7 +1,7 @@
 package main
 
 import (
-	"../something-borrowed/types"
+	"git.vieth.io/gosubl/src/gosubli.me/something-borrowed/types"
 	"go/ast"
 	"go/parser"
 	"go/scanner"
