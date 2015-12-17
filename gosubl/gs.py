@@ -53,8 +53,10 @@ _attr = {}
 _checked_lck = threading.Lock()
 _checked = {}
 
-environ9 = {}
+# TODO: _env_lck appears to not be used.
 _env_lck = threading.Lock()
+
+environ9 = {}
 _default_settings = {
     "margo_oom": 0,
     "_debug": False,
@@ -222,6 +224,7 @@ def is_a_string(v):
     try:
         return isinstance(v, basestring)
     except NameError:
+        # Python3: removed 'basestring'
         return isinstance(v, str)
 
 
@@ -492,22 +495,44 @@ def mirror_settings(so):
             m[k] = copy.copy(v)
     return m
 
+
 def sync_settings():
     _settings.update(mirror_settings(settings_obj()))
 
+
 def view_fn(view):
+    """Returns the file name of the view, or the view id.  The view id is
+    formatted as: 'gs.view://$ID'.
+    """
     if view is not None:
         if view.file_name():
             return view.file_name()
         return 'gs.view://%s' % view.id()
     return ''
 
+
 def view_src(view):
+    """Returns the string source of the Sublime view.
+    """
     if view:
         return view.substr(sublime.Region(0, view.size()))
     return ''
 
+
 def win_view(vfn=None, win=None):
+    """Returns the window and view for view name or id vfn and window win.
+
+    VFN:
+      - File name: opens the named file in the window and returns the
+        corresponding view, if the file is already open it is brought
+        to the front.
+      - View ID: must be formatted as 'gs.view://$ID'
+      - "<stdin>": returns the active view in the window
+      - None: returns the active view in the window
+
+    Win:
+      - None: win is set to the active window, if any.
+    """
     if not win:
         win = sublime.active_window()
 
@@ -529,6 +554,7 @@ def win_view(vfn=None, win=None):
             view = win.open_file(vfn)
     return (win, view)
 
+
 def do_focus(fn, row, col, win, focus_pat, cb):
     win, view = win_view(fn, win)
     if win is None or view is None:
@@ -547,8 +573,10 @@ def do_focus(fn, row, col, win, focus_pat, cb):
         if cb:
             cb(True)
 
+
 def focus(fn, row=0, col=0, win=None, timeout=100, focus_pat='^package ', cb=None):
     sublime.set_timeout(lambda: do_focus(fn, row, col, win, focus_pat, cb), timeout)
+
 
 def sm_cb():
     global sm_text
@@ -653,9 +681,12 @@ def show_quick_panel(items, cb=None):
 
     sublime.set_timeout(f, 0)
 
+
 def go_env_goroot():
+    # WARN: Appears broken and not used - REMOVE.
     out, _, _ = runcmd(['go env GOROOT'], shell=True)
     return out.strip().encode('utf-8')
+
 
 def list_dir_tree(dirname, filter, exclude_prefix=('.', '_')):
     lst = []
@@ -695,14 +726,11 @@ def show_traceback(domain):
 
 def maybe_unicode_str(s):
     """Returns if the string s might be a unicode string.
-
-       TODO:
-         - isinstance() raises TypeError, why catch NameError?
-         - rename
     """
     try:
         return isinstance(s, unicode)
     except NameError:
+        # Python3: removed 'unicode'
         return isinstance(s, str)
 
 
