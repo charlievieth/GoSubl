@@ -684,14 +684,22 @@ def list_dir_tree(dirname, filter, exclude_prefix=('.', '_')):
 
     return lst
 
+
 def traceback(domain='GoSublime'):
     return '%s: %s' % (domain, tbck.format_exc())
+
 
 def show_traceback(domain):
     show_output(domain, traceback(), replace=False, merge_domain=False)
 
 
 def maybe_unicode_str(s):
+    """Returns if the string s might be a unicode string.
+
+       TODO:
+         - isinstance() raises TypeError, why catch NameError?
+         - rename
+    """
     try:
         return isinstance(s, unicode)
     except NameError:
@@ -699,9 +707,18 @@ def maybe_unicode_str(s):
 
 
 def ustr(s):
+    """Returns a decoded version of the string s.  If s is a unicode string it
+    is not decoded.
+
+    The codecs used are 'utf-8' and locale.getpreferredencoding(), if not
+    'utf-8'.  The codecs are stored in in try_encodings.
+
+    TODO: move and comment the try_encodings declaration.
+    """
     if maybe_unicode_str(s):
         return s
 
+    # try_encodings == 'utf-8' and locale.getpreferredencoding() if not 'utf-8'
     for e in try_encodings:
         try:
             return str_decode(s, e, 'strict')
@@ -712,6 +729,8 @@ def ustr(s):
 
 
 def astr(s):
+    """Returns an encoded version of the string s as a bytes (str) object.
+    """
     if maybe_unicode_str(s):
         if PY3K:
             return s
@@ -831,22 +850,32 @@ def json_decode(s, default):
     except Exception as ex:
         return (default, 'Decode Error: %s' % ex)
 
+
 def json_encode(a):
     try:
         return (json.dumps(a), '')
     except Exception as ex:
         return ('', 'Encode Error: %s' % ex)
 
+
 def attr(k, d=None):
+    """Returns the _attr with key k, or d if not found.
+    """
     with _attr_lck:
         v = _attr.get(k, None)
         return d if v is None else copy.copy(v)
 
+
 def set_attr(k, v):
+    """Sets the _attr key k to value v.
+    """
     with _attr_lck:
         _attr[k] = v
 
+
 def del_attr(k):
+    """Deletes the _attr with key k.
+    """
     with _attr_lck:
         try:
             v = _attr[k]
@@ -860,6 +889,7 @@ def del_attr(k):
 
         return v
 
+
 # note: this functionality should not be used inside this module
 # continue to use the try: X except: X=Y hack
 def checked(domain, k):
@@ -869,6 +899,7 @@ def checked(domain, k):
         _checked[k] = True
     return v
 
+
 def sel(view, i=0):
     try:
         s = view.sel()
@@ -876,14 +907,15 @@ def sel(view, i=0):
             return s[i]
     except Exception:
         pass
-
     return sublime.Region(0, 0)
+
 
 def which_ok(fn):
     try:
         return os.path.isfile(fn) and os.access(fn, os.X_OK)
     except Exception:
         return False
+
 
 def which(cmd):
     if os.path.isabs(cmd):
@@ -904,6 +936,7 @@ def which(cmd):
     return ''
 
 
+# WARN (CEV): Module initialization?
 try:
     st2_status_message
 except:
@@ -927,12 +960,16 @@ except:
     DEVNULL = open(os.devnull, 'w')
     LOGFILE = DEVNULL
 
+
 try:
     gs9o
 except Exception:
     gs9o = {}
 
+
 def gs_init(m={}):
+    """init gs module.
+    """
     global LOGFILE
     try:
         LOGFILE = open(home_path('log.txt'), 'a+')
