@@ -763,6 +763,8 @@ def tm_path(name):
     return 'Packages/GoSublime/%s' % d[name]
 
 def packages_dir():
+    """Returns the path of the Sublime Text User Package ("Packages/User").
+    """
     fn = attr('gs.packages_dir')
     if not fn:
         fn = sublime.packages_path()
@@ -773,23 +775,42 @@ def dist_path(*a):
     return os.path.join(packages_dir(), 'GoSublime', *a)
 
 def mkdirp(fn):
+    """Recursively creates a directory rooted at fn, if directory fn does not
+    exist.
+    """
     try:
         os.makedirs(fn)
     except:
         pass
 
-def _home_path(*a):
-    return os.path.join(packages_dir(), 'User', 'GoSublime', about.PLATFORM, *a)
+
+def _home_path(*paths):
+    """Returns the path of the platform specific (OS and ARCH) GoSublime home
+    directory in the Sublime Text User Package expanded to path *paths.
+
+    For example if *paths equals 'bin' and the platform is 'osx-x64', _home_path
+    returns 'Sublime Text 3/Packages/User/GoSublime/osx-x64/bin'.
+    """
+    return os.path.join(packages_dir(), 'User', 'GoSublime', about.PLATFORM, *paths)
+
 
 def home_dir_path(*a):
     fn = _home_path(*a)
     mkdirp(fn)
     return fn
 
-def home_path(*a):
-    fn = _home_path(*a)
+
+def home_path(*paths):
+    """Recursively creates a directory rooted at the GoSublime platform specific
+    home directory joined with *paths.
+
+    For example if *paths equals 'bin' and the platform is 'osx-x64', home_path
+    creates a directory at 'Sublime Text 3/Packages/User/GoSublime/osx-x64/bin'.
+    """
+    fn = _home_path(*paths)
     mkdirp(os.path.dirname(fn))
     return fn
+
 
 def json_decode(s, default):
     try:
