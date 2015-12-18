@@ -76,12 +76,14 @@ class Request(object):
 
 
 def _inst_state():
-    """Returns install state?
+    """Returns install state from gs.attr.
     """
     return gs.attr(_inst_name(), '')
 
 
 def _inst_name():
+    """Returns the install name for the install version.
+    """
     return 'mg9.install.%s' % INSTALL_VERSION
 
 
@@ -450,10 +452,16 @@ def share(src, f):
     else:
         f({}, 'Share cancelled')
 
+
 def acall(method, arg, cb):
+    """Asynchronous send to margo.
+    """
     gs.mg9_send_q.put((method, arg, cb))
 
+
 def bcall(method, arg):
+    """Synchronous send to margo.
+    """
     if _inst_state() != "done":
         return {}, 'Blocking call(%s) aborted: Install is not done' % method
 
@@ -464,6 +472,7 @@ def bcall(method, arg):
         return res, err
     except:
         return {}, 'Blocking Call(%s): Timeout' % method
+
 
 def expand_jdata(v):
     if gs.is_a(v, {}):
@@ -482,6 +491,7 @@ def expand_jdata(v):
                 v = ''
                 gs.error_traceback(DOMAIN)
     return v
+
 
 def _recv():
     while True:
@@ -530,6 +540,7 @@ def _recv():
         except Exception:
             gs.println(gs.traceback())
             break
+
 
 def _send():
     while True:
@@ -614,11 +625,13 @@ def _send():
             gs.println(gs.traceback())
             break
 
+
 def _call(cb, res, err):
     try:
         cb(res, err)
     except Exception:
         gs.error_traceback(DOMAIN)
+
 
 def _cb_err(cb, err):
     gs.error(DOMAIN, err)
@@ -640,25 +653,26 @@ def _read_stdout(proc):
         proc.wait()
         proc = None
 
+
 def killSrv():
     """Kills server on process exit, registered by 'gs_init'.
     """
-
     p = gs.del_attr(PROC_ATTR_NAME)
     if p:
         try:
             p.stdout.close()
         except Exception:
             pass
-
         try:
             p.stdin.close()
         except Exception:
             pass
 
+
 def on(token, cb):
     req = Request(f=cb, token=token)
     gs.set_attr(REQUEST_PREFIX+req.token, req)
+
 
 def _dump(res, err):
     gs.println(json.dumps({
@@ -666,16 +680,20 @@ def _dump(res, err):
         'err': err,
     }, sort_keys=True, indent=2))
 
+
+# WARN: module level
 if not gs.checked(DOMAIN, 'launch ipc threads'):
     gsq.launch(DOMAIN, _send)
     gsq.launch(DOMAIN, _recv)
+
 
 def on_mg_msg(res, err):
     msg = res.get('message', '')
     if msg:
         print('GoSublime: MarGo: %s' % msg)
         gs.notify('MarGo', msg)
-
     return True
 
+
+# WARN: module level
 on('margo.message', on_mg_msg)

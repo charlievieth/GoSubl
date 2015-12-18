@@ -1,6 +1,3 @@
-# Sublime modelines - https://github.com/SublimeText/Modelines
-# sublime: translate_tabs_to_spaces false; rulers [100,120]
-
 from gosubl import about
 from subprocess import Popen, PIPE
 import copy
@@ -326,6 +323,7 @@ def notice_undo(domain, txt, view, should_undo):
         notice(domain, txt)
     sublime.set_timeout(cb, 0)
 
+
 def show_output(domain, s, print_output=True, syntax_file='', replace=True, merge_domain=False, scroll_end=False):
     def cb(domain, s, print_output, syntax_file):
         panel_name = '%s-output' % domain
@@ -347,6 +345,7 @@ def show_output(domain, s, print_output=True, syntax_file='', replace=True, merg
             win.run_command("show_panel", {"panel": "output.%s" % panel_name})
 
     sublime.set_timeout(lambda: cb(domain, s, print_output, syntax_file), 0)
+
 
 def is_pkg_view(view=None):
     # todo implement this fully
@@ -547,6 +546,7 @@ def win_view(vfn=None, win=None):
                         view = v
                         break
             except Exception:
+                # WARN: probably need to remove 'gs.'
                 gs.error_traceback(NAME)
         elif not vfn or vfn == "<stdin>":
             view = win.active_view()
@@ -717,6 +717,8 @@ def list_dir_tree(dirname, filter, exclude_prefix=('.', '_')):
 
 
 def traceback(domain='GoSublime'):
+    """Returns a traceback formatted as 'domain: traceback'.
+    """
     return '%s: %s' % (domain, tbck.format_exc())
 
 
@@ -768,6 +770,9 @@ def astr(s):
 
 
 def lst(*a):
+    """Returns arguments *a as a flat list, any list arguments are flattened.
+    Example: lst(1, [2, 3]) returns [1, 2, 3].
+    """
     l = []
     for v in a:
         if is_a([], v):
@@ -870,6 +875,9 @@ def home_path(*path):
 
 
 def json_decode(s, default):
+    """Decodes JSON s and checks if it is an instance of default.
+    Returning the decoded object and an error message, if any.
+    """
     try:
         res = json.loads(s)
         if is_a(res, default):
@@ -880,6 +888,8 @@ def json_decode(s, default):
 
 
 def json_encode(a):
+    """Returns a encoded into JSON and an error message, if any.
+    """
     try:
         return (json.dumps(a), '')
     except Exception as ex:
@@ -965,6 +975,7 @@ def which(cmd):
 
 
 # WARN (CEV): Module initialization?
+# WTF is going on here?
 try:
     st2_status_message
 except:

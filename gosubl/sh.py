@@ -60,7 +60,7 @@ class _command(object):
 
         nv = env(nv0)
         nv.update(nv0)
-        cmd_lst = self.cmd(nv)
+        cmd_lst = self.cmd(nv) # cmd is defined by child classes.
         orig_cmd = cmd_lst[0]
         cmd_lst[0] = _which(orig_cmd, nv.get('PATH'))
 
