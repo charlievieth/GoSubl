@@ -92,6 +92,8 @@ def _margo_src():
 
 
 def _margo_bin(exe=''):
+    """Returns the path of the margo executable.
+    """
     return gs.home_path('bin', exe or INSTALL_EXE)
 
 
@@ -475,6 +477,8 @@ def bcall(method, arg):
 
 
 def expand_jdata(v):
+    """Expands a byte or base64 encoded string.
+    """
     if gs.is_a(v, {}):
         for k in v:
             v[k] = expand_jdata(v[k])
@@ -494,6 +498,8 @@ def expand_jdata(v):
 
 
 def _recv():
+    """Polls the mg9_recv_q queue parsing responses.
+    """
     while True:
         try:
             ln = gs.mg9_recv_q.get()
@@ -504,8 +510,11 @@ def _recv():
                     token = r.get('token', '')
                     tag = r.get('tag', '')
                     k = REQUEST_PREFIX+token
+
+                    # TODO: try req = gs.del_attr(k)
                     req = gs.attr(k, {})
                     gs.del_attr(k)
+
                     if req and req.f:
                         if tag != TAG:
                             gs.notice(DOMAIN, "\n".join([
@@ -516,6 +525,7 @@ def _recv():
 
                         err = r.get('error', '')
 
+                        # TODO: figure out how the debug Event() works.
                         ev.debug(DOMAIN, "margo response: %s" % {
                             'method': req.method,
                             'tag': tag,
@@ -525,6 +535,7 @@ def _recv():
                             'size': '%0.1fK' % (len(ln)/1024.0),
                         })
 
+                        # TODO: comment this...
                         dat = expand_jdata(r.get('data', {}))
                         try:
                             keep = req.f(dat, err) is True
@@ -548,8 +559,10 @@ def _send():
             try:
                 method, arg, cb = gs.mg9_send_q.get()
 
+                # CEV: proc should be the margo process.
                 proc = gs.attr(PROC_ATTR_NAME)
                 if not proc or proc.poll() is not None:
+                    # CEV: Looks like this starts/restarts the margo process.
                     killSrv()
 
                     if _inst_state() != "busy":
@@ -558,6 +571,7 @@ def _send():
                     while _inst_state() == "busy":
                         time.sleep(0.100)
 
+                    # Margo path and command line options.
                     mg_bin = _margo_bin()
                     cmd = [
                         mg_bin,
@@ -587,7 +601,9 @@ def _send():
 
                         continue
 
+                    # Set the process name
                     gs.set_attr(PROC_ATTR_NAME, proc)
+                    # Launch stdout feed.
                     gsq.launch(DOMAIN, lambda: _read_stdout(proc))
 
                 req = Request(f=cb, method=method)
@@ -639,6 +655,9 @@ def _cb_err(cb, err):
 
 
 def _read_stdout(proc):
+    """Reads lines from proc stdout into the mg9_recv_q queue.Queue, which
+    is polled by _recv().
+    """
     try:
         while True:
             ln = proc.stdout.readline()
@@ -682,6 +701,8 @@ def _dump(res, err):
 
 
 # WARN: module level
+#
+# Start send and recieve threads.
 if not gs.checked(DOMAIN, 'launch ipc threads'):
     gsq.launch(DOMAIN, _send)
     gsq.launch(DOMAIN, _recv)

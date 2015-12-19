@@ -17,6 +17,7 @@ class Launcher(threading.Thread):
         except Exception:
             gs.notice(self.domain, gs.traceback())
 
+
 class Runner(threading.Thread):
     def __init__(self, domain, f, msg='', set_status=False):
         threading.Thread.__init__(self)
@@ -34,6 +35,7 @@ class Runner(threading.Thread):
             gs.notice(self.domain, gs.traceback())
         finally:
             gs.end(tid)
+
 
 class GsQ(threading.Thread):
     def __init__(self, domain):
@@ -63,6 +65,8 @@ class GsQ(threading.Thread):
         except Exception:
             gs.notice(self.domain, traceback())
 
+
+# CEV: WTF is this?  Also, rename 'm'.
 try:
     m
 except:
@@ -79,8 +83,10 @@ def dispatch(domain, f, msg='', set_status=False):
 
     q.dispatch(f, msg, set_status)
 
+
 def do(domain, f, msg='', set_status=False):
     Runner(domain, f, msg, set_status).start()
+
 
 def launch(domain, f):
     Launcher(domain, f).start()

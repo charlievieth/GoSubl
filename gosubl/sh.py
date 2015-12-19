@@ -119,6 +119,7 @@ class _command(object):
             exc=exc
         )
 
+
 class ShellCommand(_command):
     def __init__(self, cmd_str):
         _command.__init__(self)
@@ -126,6 +127,7 @@ class ShellCommand(_command):
 
     def cmd(self, e):
         return _cmd(self.cmd_str, e)
+
 
 class Command(_command):
     def __init__(self, cmd_lst):
@@ -135,8 +137,10 @@ class Command(_command):
     def cmd(self, e):
         return self.cmd_lst
 
+
 def shl(m={}):
     return _shl(env(m))
+
 
 def _shl(e):
     l = gs.setting('shell', [])
@@ -156,8 +160,10 @@ def _shl(e):
 
     return l
 
+
 def _shl_cmd(fn):
     return [fn, '/C', '${CMD}']
+
 
 def _shl_sh(fn):
     return [fn, '-l', '-c', '${CMD}']
@@ -167,8 +173,10 @@ _shl_bash = _shl_sh
 _shl_zsh = _shl_sh
 _shl_rc = _shl_sh
 
+
 def cmd(cmd_str, m={}):
     return _cmd(cmd_str, env(m))
+
 
 def _cmd(cmd_str, e):
     cmdm = {'CMD': cmd_str}
@@ -180,6 +188,7 @@ def _cmd(cmd_str, e):
             cmdl.append(s)
 
     return cmdl
+
 
 def gs_init(_={}):
     global _env_ext
@@ -262,11 +271,14 @@ def gs_init(_={}):
 
     init_done = True
 
+
 def _print(s):
     print('GoSublime %s sh: %s' % (about.VERSION, s))
 
+
 def getenv(name, default='', m={}):
     return env(m).get(name, default)
+
 
 def gs_gopath(fn, roots=[]):
     comps = fn.split(os.sep)
@@ -278,6 +290,7 @@ def gs_gopath(fn, roots=[]):
                 l.append(p)
     l.reverse()
     return psep.join(l)
+
 
 def env(m={}):
     """
@@ -348,7 +361,7 @@ def env(m={}):
     e['PATH'] = psep.join(add_path)
 
     fn = gs.attr('active_fn', '')
-    wd =  gs.getwd()
+    wd = gs.getwd()
 
     e.update({
         'PWD': wd,
@@ -374,16 +387,25 @@ def env(m={}):
 
     return clean_env
 
+
 def which_ok(fn):
+    """Returns if the file located at path fn exists and can be executed.
+    """
     try:
         return os.path.isfile(fn) and os.access(fn, os.X_OK)
     except Exception:
         return False
 
+
 def which(cmd):
+    """Locates program cmd in the user's path.
+    """
     return _which(cmd, getenv('PATH', ''))
 
+
 def _which(cmd, env_path):
+    """Locates program cmd in path list env_path.
+    """
     if os.path.isabs(cmd):
         return cmd if which_ok(cmd) else ''
 
@@ -392,14 +414,15 @@ def _which(cmd, env_path):
         cmd = '%s.exe' % cmd
 
     seen = {}
+    # psep is the OS path separator (os.pathsep).
     for p in env_path.split(psep):
         p = os.path.join(p, cmd)
         if p not in seen and which_ok(p):
             return p
-
         seen[p] = True
 
     return ''
+
 
 def go_cmd(cmd_lst):
     go = which('go')
@@ -407,13 +430,16 @@ def go_cmd(cmd_lst):
         return Command(gs.lst(go, cmd_lst))
     return ShellCommand('go %s' % (' '.join(cmd_lst)))
 
+
 def go(cmd_lst):
     cr = go_cmd(cmd_lst).run()
     out = cr.out.strip() + '\n' + cr.err.strip()
     return out.strip()
 
+
 def vdir():
     return gs.home_dir_path(VDIR_NAME)
+
 
 def bin_dir():
     if not init_done:
@@ -425,6 +451,7 @@ def bin_dir():
         return ''
 
     return gs.home_dir_path(VDIR_NAME, 'bin')
+
 
 def exe(nm):
     if gs.os_is_windows():
