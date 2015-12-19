@@ -49,6 +49,13 @@ class Event(object):
 
         return self
 
+    def __len__(self):
+        """Override len() to return the length of the Event's list lst.
+        """
+        with self.lck:
+            return len(self.lst)
+
+
 # TODO: Figure out how these are used.
 
 # CEV: Called from mg9.py and sh.py.
