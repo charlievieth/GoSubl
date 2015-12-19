@@ -500,6 +500,7 @@ def expand_jdata(v):
 def _recv():
     """Polls the mg9_recv_q queue parsing responses.
     """
+    # TODO: REFACTOR.
     while True:
         try:
             ln = gs.mg9_recv_q.get()
@@ -525,7 +526,7 @@ def _recv():
 
                         err = r.get('error', '')
 
-                        # TODO: figure out how the debug Event() works.
+                        # TODO: Check if debug is enabled (len()).
                         ev.debug(DOMAIN, "margo response: %s" % {
                             'method': req.method,
                             'tag': tag,
@@ -535,9 +536,13 @@ def _recv():
                             'size': '%0.1fK' % (len(ln)/1024.0),
                         })
 
-                        # TODO: comment this...
+                        # CEV: req.f is the callback 'cb' set in _send().
+                        #
                         dat = expand_jdata(r.get('data', {}))
                         try:
+                            # Add request back to the attr dict.
+                            #
+                            # TODO: Document, which calls keep the request.
                             keep = req.f(dat, err) is True
                             if keep:
                                 req.tm = time.time()
@@ -554,6 +559,10 @@ def _recv():
 
 
 def _send():
+    """Polls the mg9_send_q queue, sending requests to margo.  If the margo
+    process is not running _send() starts it and sets the PROC_ATTR_NAME attr.
+    """
+    # TODO: REFACTOR.
     while True:
         try:
             try:
@@ -561,8 +570,9 @@ def _send():
 
                 # CEV: proc should be the margo process.
                 proc = gs.attr(PROC_ATTR_NAME)
+
+                # CEV: Looks like this starts/restarts the margo process.
                 if not proc or proc.poll() is not None:
-                    # CEV: Looks like this starts/restarts the margo process.
                     killSrv()
 
                     if _inst_state() != "busy":
