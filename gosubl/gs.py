@@ -159,13 +159,16 @@ ROWCOL_PAT = re.compile(r'^[:]*(\d+)(?:[:](\d+))?[:]*$')
 USER_DIR = os.path.expanduser('~')
 USER_DIR_PAT = re.compile(r'^%s/' % (re.escape(USER_DIR.replace('\\', '/').rstrip('/'))))
 
+
 def simple_fn(fn):
     return USER_DIR_PAT.sub('~/', '%s/' % fn.replace('\\', '/').rstrip('/'))
+
 
 def getwd():
     if PY3K:
         return os.getcwd()
     return os.getcwdu()
+
 
 def apath(fn, cwd=None):
     if not os.path.isabs(fn):
@@ -173,6 +176,7 @@ def apath(fn, cwd=None):
             cwd = getwd()
         fn = os.path.join(cwd, fn)
     return os.path.normcase(os.path.normpath(fn))
+
 
 def temp_dir(subdir=''):
     tmpdir = os.path.join(tempfile.gettempdir(), NAME, subdir)
@@ -183,6 +187,7 @@ def temp_dir(subdir=''):
         err = str(ex)
     return (tmpdir, err)
 
+
 def temp_file(suffix='', prefix='', delete=True):
     try:
         f = tempfile.NamedTemporaryFile(suffix=suffix, prefix=prefix, dir=temp_dir(), delete=delete)
@@ -190,10 +195,12 @@ def temp_file(suffix='', prefix='', delete=True):
         return (None, 'Error: %s' % ex)
     return (f, '')
 
+
 def basedir_or_cwd(fn):
     if fn and not fn.startswith('gs.view://'):
         return os.path.dirname(fn)
     return getwd()
+
 
 def popen(args, stdout=PIPE, stderr=PIPE, shell=False, environ={}, cwd=None, bufsize=0):
     ev = env()
@@ -241,8 +248,10 @@ def aso():
     """
     return sublime.load_settings("GoSublime-aux.sublime-settings")
 
+
 def save_aso():
     return sublime.save_settings("GoSublime-aux.sublime-settings")
+
 
 def settings_dict():
     """Returns a copy of the settings dictionary '_settings'.
@@ -261,8 +270,10 @@ def settings_dict():
 
     return m
 
+
 def setting(k, d=None):
     return settings_dict().get(k, d)
+
 
 def println(*a):
     l = []
@@ -289,17 +300,21 @@ def log(*a):
     except Exception:
         pass
 
+
 def notify(domain, txt):
     txt = "%s: %s" % (domain, txt)
     status_message(txt)
 
+
 def notice(domain, txt):
     error(domain, txt)
+
 
 def error(domain, txt):
     txt = "%s: %s" % (domain, txt)
     log(txt)
     status_message(txt)
+
 
 def error_traceback(domain, status_txt=''):
     tb = traceback().strip()
@@ -315,6 +330,7 @@ def error_traceback(domain, status_txt=''):
 
     log("%s: %s%s" % (domain, prefix, tb))
     status_message("%s: %s" % (domain, status_txt))
+
 
 def notice_undo(domain, txt, view, should_undo):
     def cb():
@@ -351,6 +367,7 @@ def is_pkg_view(view=None):
     # todo implement this fully
     return is_go_source_view(view, False)
 
+
 def is_go_source_view(view=None, strict=True):
     if view is None:
         return False
@@ -365,6 +382,7 @@ def is_go_source_view(view=None, strict=True):
     fn = view.file_name() or ''
     return fn.lower().endswith('.go')
 
+
 def active_valid_go_view(win=None, strict=True):
     if not win:
         win = sublime.active_window()
@@ -374,14 +392,18 @@ def active_valid_go_view(win=None, strict=True):
             return view
     return None
 
+
 def rowcol(view):
     return view.rowcol(sel(view).begin())
+
 
 def os_is_windows():
     return os.name == "nt"
 
+
 def getenv(name, default='', m={}):
     return env(m).get(name, default)
+
 
 def env(m={}):
     """
@@ -613,6 +635,7 @@ def sm_cb():
 def sched_sm_cb():
     sublime.set_timeout(sm_cb, 250)
 
+
 def status_message(s):
     global sm_text
     global sm_tm
@@ -620,6 +643,7 @@ def status_message(s):
     with sm_lck:
         sm_text = s
         sm_tm = datetime.datetime.now()
+
 
 def begin(domain, message, set_status=True, cancel=None):
     global sm_task_counter
@@ -639,6 +663,7 @@ def begin(domain, message, set_status=True, cancel=None):
 
     return tid
 
+
 def end(task_id):
     with sm_lck:
         try:
@@ -646,17 +671,21 @@ def end(task_id):
         except:
             pass
 
+
 def task(task_id, default=None):
     with sm_lck:
         return sm_tasks.get(task_id, default)
+
 
 def clear_tasks():
     with sm_lck:
         sm_tasks = {}
 
+
 def task_list():
     with sm_lck:
         return sorted(sm_tasks.items())
+
 
 def cancel_task(tid):
     t = task(tid)
@@ -667,6 +696,7 @@ def cancel_task(tid):
 
         return True
     return False
+
 
 def show_quick_panel(items, cb=None):
     def f():
