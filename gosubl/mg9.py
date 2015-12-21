@@ -78,6 +78,7 @@ class Request(object):
 def _inst_state():
     """Returns install state from gs.attr.
     """
+    # TODO: Improve the handling of install state.
     return gs.attr(_inst_name(), '')
 
 
@@ -165,6 +166,8 @@ def _bins_exist():
 
 
 def maybe_install():
+    """Installs margo if installer is not busy or the binary does not exist.
+    """
     if _inst_state() == '' and not _bins_exist():
         install('', True)
 
@@ -578,6 +581,7 @@ def _send():
                     if _inst_state() != "busy":
                         maybe_install()
 
+                    # TODO: Improve the handling of install state.
                     while _inst_state() == "busy":
                         time.sleep(0.100)
 
