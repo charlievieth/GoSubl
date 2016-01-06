@@ -829,6 +829,12 @@ def dval(v, d):
 
 
 def tm_path(name):
+    """Returns the path of the settings file for name ('9o', 'doc', 'go',
+    'gohtml')
+
+    Note: This is used to locate syntax files, and appears to break when
+    GoSublime is not located in the ST Package directory.
+    """
     d = {
         '9o': 'syntax/GoSublime-9o.tmLanguage',
         'doc': 'GsDoc.hidden-tmLanguage',
@@ -837,12 +843,14 @@ def tm_path(name):
     }
 
     try:
+        # CEV: This file does not appear to exist on ST3.
         so = sublime.load_settings('GoSublime-next.sublime-settings')
         if 'go' in so.get('extensions', []):
             d['go'] = 'GoSublime-next.tmLanguage'
     except Exception:
         pass
 
+    # TODO: This appears to fail when GoSublime is moved.
     return 'Packages/GoSublime/%s' % d[name]
 
 
