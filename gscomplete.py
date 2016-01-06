@@ -156,6 +156,8 @@ class GoSublime(sublime_plugin.EventListener):
         return r.end() if r and r.end() < end else -1
 
     def complete(self, fn, offset, src, func_name_only):
+        """Go completion via gocode (called from mg9.py).
+        """
         comps = []
         autocomplete_tests = gs.setting('autocomplete_tests', False)
         autocomplete_closures = gs.setting('autocomplete_closures', False)
@@ -171,6 +173,7 @@ class GoSublime(sublime_plugin.EventListener):
             except Exception as ex:
                 gs.notice(DOMAIN, 'Cannot filter completions: %s' % ex)
 
+        # TODO: Remove Regexes and move to Go.
         for ent in ents:
             if name_fx and name_fx.search(ent['name']):
                 continue
