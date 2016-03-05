@@ -3,7 +3,7 @@
 	"packages": [
 		{
 			"name": "GoSubl",
-			"details": "https://github.com/themachinist/gcode-syntax-highlighting",
+			"details": "https://github.com/charlievieth/GoSubl",
 			"releases": [
 				{
 					"sublime_text": "*",
