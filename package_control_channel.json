@@ -1,0 +1,15 @@
+{
+	"schema_version": "3.0.0",
+	"packages": [
+		{
+			"name": "GoSubl",
+			"details": "https://github.com/themachinist/gcode-syntax-highlighting",
+			"releases": [
+				{
+					"sublime_text": "*",
+					"branch": "initial"
+				}
+			]
+		}
+	]
+}
