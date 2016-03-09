@@ -46,13 +46,10 @@ def gs_init(m={}):
     if margo_exe:
         INSTALL_EXE = margo_exe
 
+    force = about.FORCE_INSTALL is True
     # install_version recorded in 'GoSublime-aux.sublime-settings'
     aso_install_vesion = gs.aso().get('install_version', '')
-
-    # WARN: Dev only
-    force_install = about.FORCE_INSTALL is True
-
-    f = lambda: install(aso_install_vesion, force_install)
+    f = lambda: install(aso_install_vesion, force)
     # GsQ handles threaded processes.
     # Install latest version.
     gsq.do('GoSublime', f, msg='Installing MarGo', set_status=False)
@@ -197,12 +194,15 @@ def install(aso_install_vesion, force_install):
         gs.notify('GoSublime', 'Installing MarGo')
         start = time.time()
 
+        # WARN (CEV): Hard coded GOPATH
+        gopath = gs.dist_path() + os.pathsep + "/Users/Charlie/go"
+
         cmd = sh.Command(['go', 'build', '-v', '-x', '-o', INSTALL_EXE, 'gosubli.me/margo'])
         cmd.wd = gs.home_dir_path('bin')
         cmd.env = {
             'CGO_ENABLED': '0',
             'GOBIN': '',
-            'GOPATH': gs.dist_path(),
+            'GOPATH': gopath,
         }
 
         ev.debug('%s.build' % DOMAIN, {

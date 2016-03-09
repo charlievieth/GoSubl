@@ -2,13 +2,14 @@ from gosubl import gs
 import os
 import sublime_plugin
 
+# WARN (CEV): Update file paths
 def _stx(v):
     old = [
         'GoSublime.tmLanguage',
         'GoSublime-next.tmLanguage',
     ]
 
-    fn = 'Packages/GoSublime/syntax/GoSublime-Go.tmLanguage'
+    fn = 'Packages/GoSubl/syntax/GoSublime-Go.tmLanguage'
     if not os.path.exists(gs.dist_path('syntax/GoSublime-Go.tmLanguage')):
         return
 

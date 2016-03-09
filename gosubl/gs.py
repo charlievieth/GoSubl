@@ -39,7 +39,7 @@ try:
 except (AttributeError):
     STARTUP_INFO = None
 
-NAME = 'GoSublime'
+NAME = 'GoSubl'
 
 mg9_send_q = queue.Queue()
 mg9_recv_q = queue.Queue()
@@ -851,7 +851,8 @@ def tm_path(name):
         pass
 
     # TODO: This appears to fail when GoSublime is moved.
-    return 'Packages/GoSublime/%s' % d[name]
+    # Updated for name change to 'GoSubl'
+    return 'Packages/GoSubl/%s' % d[name]
 
 
 def packages_dir():
@@ -865,7 +866,9 @@ def packages_dir():
 
 
 def dist_path(*a):
-    return os.path.join(packages_dir(), 'GoSublime', *a)
+    """Returns the path of the GoSubl package.
+    """
+    return os.path.join(packages_dir(), 'GoSubl', *a)
 
 
 def mkdirp(fn):

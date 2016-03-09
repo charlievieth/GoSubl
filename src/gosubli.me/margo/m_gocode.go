@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"unicode/utf8"
 
 	"git.vieth.io/gocode"
 )
@@ -121,7 +122,7 @@ func (g *GoCode) GOROOT() string {
 
 func (g *GoCode) calltips(filename string, src []byte, offset int) ([]gocode.Candidate, error) {
 	fset := token.NewFileSet()
-	af, err := parser.ParseFile(fset, filename, src, parser.ParseComments)
+	af, err := parser.ParseFile(fset, filename, src, 0)
 	if af == nil {
 		return nil, err
 	}
@@ -213,17 +214,23 @@ func (v *calltipVisitor) Visit(node ast.Node) (w ast.Visitor) {
 }
 
 func (g *GoCode) bytePos() (int, error) {
-	if g.Src == "" {
+	s := g.Src
+	off := g.Pos
+	if len(s) == 0 || len(s) <= off || off < 0 {
 		return -1, errors.New("gocode: nil source")
 	}
-	if 0 <= g.Pos && g.Pos < len(g.Src) {
-		i := g.Pos
-		for n := range g.Src {
-			if i <= 0 {
-				return n, nil
-			}
-			i--
+	i := 0
+	var n int
+	for n = 0; i < len(s) && n < off; n++ {
+		if s[i] < utf8.RuneSelf {
+			i++
+		} else {
+			_, size := utf8.DecodeRuneInString(s[i:])
+			i += size
 		}
+	}
+	if n == off && i < len(s) {
+		return i, nil
 	}
 	return -1, fmt.Errorf("gocode: invalid offset: %d", g.Pos)
 }

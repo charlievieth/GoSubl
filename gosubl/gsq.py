@@ -30,7 +30,7 @@ class Runner(threading.Thread):
     def run(self):
         tid = gs.begin(self.domain, self.msg, self.set_status)
         try:
-            self.f()
+            self.f() # WARN (CEV): Error
         except Exception:
             gs.notice(self.domain, gs.traceback())
         finally:
