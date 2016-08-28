@@ -29,7 +29,7 @@ class GsDocCommand(sublime_plugin.TextCommand):
     def goto_callback(self, docs, err):
         if err:
             self.show_output('// Error: %s' % err)
-        elif len(docs) and docs[0]['fn']:
+        elif len(docs) and 'fn' in docs[0]:
             d = docs[0]
             fn = d.get('fn', '')
             row = d.get('row', 0)
@@ -38,7 +38,6 @@ class GsDocCommand(sublime_plugin.TextCommand):
             gs.focus(fn, row, col)
         else:
             self.show_output("%s: cannot find definition" % DOMAIN)
-
 
     def parse_doc_hint(self, doc):
         if 'name' not in doc:
