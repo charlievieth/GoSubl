@@ -1,8 +1,8 @@
+import os
+import re
 from gosubl import gs
 from gosubl import gsq
 from gosubl import mg9
-import os
-import re
 import sublime
 import sublime_plugin
 
@@ -10,11 +10,14 @@ DOMAIN = 'GsDoc'
 
 GOOS_PAT = re.compile(r'_(%s)' % '|'.join(gs.GOOSES))
 GOARCH_PAT = re.compile(r'_(%s)' % '|'.join(gs.GOARCHES))
-EXT_EXCLUDE = [
-    'out', 'exe', 'o', 'dll', 'so', 'a', 'dynlib', 'lib', 'com', 'bin', 'pyc', 'pyo', 'cache', 'db',
-    'bak', 'png', 'gif', 'jpeg', 'jpg', 'gz', 'zip', '7z', 'rar', 'tar', '1', '2', '3', 'old', 'tgz',
-    'pprof', 'prof', 'mem', 'cpu', 'swap',
-]
+
+EXT_EXCLUDE = frozenset([
+    '1', '2', '3', '7z', 'a', 'bak', 'bin', 'cache', 'com', 'cpu', 'db',
+    'dll', 'dynlib', 'exe', 'gif', 'gz', 'jpeg', 'jpg', 'lib', 'mem',
+    'o', 'old', 'out', 'png', 'pprof', 'prof', 'pyc', 'pyo', 'rar', 'so',
+    'swap', 'tar', 'tgz', 'zip',
+])
+
 
 class GsDocCommand(sublime_plugin.TextCommand):
     def is_enabled(self):
@@ -22,6 +25,41 @@ class GsDocCommand(sublime_plugin.TextCommand):
 
     def show_output(self, s):
         gs.show_output(DOMAIN+'-output', s, False, 'GsDoc')
+
+    def goto_callback(self, docs, err):
+        if err:
+            self.show_output('// Error: %s' % err)
+        elif len(docs) and 'fn' in docs[0]:
+            d = docs[0]
+            fn = d.get('fn', '')
+            row = d.get('row', 0)
+            col = d.get('col', 0)
+            gs.println('opening %s:%s:%s' % (fn, row, col))
+            gs.focus(fn, row, col)
+        else:
+            self.show_output("%s: cannot find definition" % DOMAIN)
+
+    def parse_doc_hint(self, doc):
+        if 'name' not in doc:
+            return None
+        if 'pkg' in doc:
+            name = '%s.%s' % (doc['pkg'], doc['name'])
+        else:
+            name = doc['name']
+        if 'src' in doc:
+            src = '\n//\n%s' % doc['src']
+        else:
+            src = ''
+        return '// %s %s%s' % (name, doc.get('kind', ''), src)
+
+    def hint_callback(self, docs, err):
+        if err:
+            self.show_output('// Error: %s' % err)
+        elif docs:
+            results = [self.parse_doc_hint(d) for d in docs if 'name' in d]
+            if results:
+                self.show_output('\n\n\n'.join(results).strip())
+        self.show_output("// %s: no docs found" % DOMAIN)
 
     def run(self, _, mode=''):
         view = self.view
@@ -31,43 +69,13 @@ class GsDocCommand(sublime_plugin.TextCommand):
         pt = gs.sel(view).begin()
         src = view.substr(sublime.Region(0, view.size()))
         pt = len(src[:pt].encode("utf-8"))
-        def f(docs, err):
-            doc = ''
-            if err:
-                self.show_output('// Error: %s' % err)
-            elif docs:
-                if mode == "goto":
-                    fn = ''
-                    flags = 0
-                    if len(docs) > 0:
-                        d = docs[0]
-                        fn = d.get('fn', '')
-                        row = d.get('row', 0)
-                        col = d.get('col', 0)
-                        if fn:
-                            gs.println('opening %s:%s:%s' % (fn, row, col))
-                            gs.focus(fn, row, col)
-                            return
-                    self.show_output("%s: cannot find definition" % DOMAIN)
-                elif mode == "hint":
-                    s = []
-                    for d in docs:
-                        name = d.get('name', '')
-                        if name:
-                            kind = d.get('kind', '')
-                            pkg = d.get('pkg', '')
-                            if pkg:
-                                name = '%s.%s' % (pkg, name)
-                            src = d.get('src', '')
-                            if src:
-                                src = '\n//\n%s' % src
-                            doc = '// %s %s%s' % (name, kind, src)
 
-                        s.append(doc)
-                    doc = '\n\n\n'.join(s).strip()
-            self.show_output(doc or "// %s: no docs found" % DOMAIN)
+        if mode == 'goto':
+            callback = self.goto_callback
+        elif mode == 'hint':
+            callback = self.hint_callback
+        mg9.doc(view.file_name(), src, pt, callback)
 
-        mg9.doc(view.file_name(), src, pt, f)
 
 class GsBrowseDeclarationsCommand(sublime_plugin.WindowCommand):
     def run(self, dir=''):
@@ -163,6 +171,7 @@ def handle_pkgdirs_res(res):
     ents.sort(key = lambda a: a.lower())
     return (ents, m)
 
+
 class GsBrowsePackagesCommand(sublime_plugin.WindowCommand):
     def run(self):
         def f(res, err):
@@ -182,17 +191,16 @@ class GsBrowsePackagesCommand(sublime_plugin.WindowCommand):
 
         mg9.pkg_dirs(f)
 
+
 def ext_filter(pathname, basename, ext):
     if not ext:
         return basename == "makefile"
-
     if ext in EXT_EXCLUDE:
         return False
-
     if ext.endswith('~'):
         return False
-
     return True
+
 
 def show_pkgfiles(dirname):
     ents = []
@@ -227,6 +235,7 @@ def show_pkgfiles(dirname):
         gs.show_quick_panel(ents, cb)
     else:
         gs.show_quick_panel([['', 'No files found']])
+
 
 class GsBrowseFilesCommand(sublime_plugin.WindowCommand):
     def run(self, dir=''):

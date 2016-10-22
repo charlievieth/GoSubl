@@ -17,4 +17,4 @@ MARGO_EXE_PAT = re.compile(r'^gosublime\.margo.*\.exe$', re.IGNORECASE)
 
 # CEV: Dev Globals
 
-FORCE_INSTALL = True
+FORCE_INSTALL = False

@@ -1,9 +1,10 @@
 package main
 
 import (
+	"go/build"
 	"path/filepath"
 
-	"git.vieth.io/define"
+	"git.vieth.io/godef"
 )
 
 func init() {
@@ -33,11 +34,24 @@ type FindResponse struct {
 	Col  int    `json:"col"`
 }
 
-var findConfig = define.DefaultConfig
-
 func (f *FindRequest) Call() (interface{}, string) {
+	ctxt := build.Default
+	if f.Env != nil {
+		if s := f.Env["GOPATH"]; s != "" {
+			ctxt.GOPATH = s
+		}
+		if s := f.Env["GOROOT"]; s != "" {
+			ctxt.GOROOT = s
+		}
+		if s := f.Env["GOOS"]; s != "" {
+			ctxt.GOOS = s
+		}
+	}
+	conf := godef.Config{
+		Context: ctxt,
+	}
 	fn := filepath.Clean(f.Fn)
-	pos, src, err := findConfig.Define(fn, f.Offset, f.Src)
+	pos, src, err := conf.Define(fn, f.Offset, f.Src)
 	if err != nil {
 		return nil, err.Error()
 	}

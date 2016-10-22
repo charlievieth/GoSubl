@@ -143,7 +143,7 @@ def watch():
             if fr:
                 fr.view = view
                 highlight(fr)
-        sublime.set_timeout(watch, 500)
+        sublime.set_timeout(watch, 150) # Previously 500
         return
 
 
@@ -154,7 +154,7 @@ def watch():
                     fr = file_refs[fn]
                     cleanup(fr.view)
                 file_refs = {}
-        sublime.set_timeout(watch, 2000)
+        sublime.set_timeout(watch, 150) # Previously 2000
         return
 
     if view and not view.is_loading():
@@ -186,7 +186,7 @@ def watch():
                             th.start()
                         th.putq(fn)
 
-    sublime.set_timeout(watch, 500)
+    sublime.set_timeout(watch, 150) # Previously 500
 
 def ref(fn, validate=True):
     with sem:

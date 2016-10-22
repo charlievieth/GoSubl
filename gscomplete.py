@@ -80,7 +80,6 @@ def resolve_snippets(ctx):
     return list(cl)
 
 class GoSublime(sublime_plugin.EventListener):
-    gocode_set = False
     def on_query_completions(self, view, prefix, locations):
         pos = locations[0]
         scopes = view.scope_name(pos).split()

@@ -568,8 +568,7 @@ def win_view(vfn=None, win=None):
                         view = v
                         break
             except Exception:
-                # WARN: probably need to remove 'gs.'
-                gs.error_traceback(NAME)
+                error_traceback(NAME)
         elif not vfn or vfn == "<stdin>":
             view = win.active_view()
         else:
@@ -666,10 +665,8 @@ def begin(domain, message, set_status=True, cancel=None):
 
 def end(task_id):
     with sm_lck:
-        try:
-            del(sm_tasks[task_id])
-        except:
-            pass
+        if task_id in sm_tasks:
+            del sm_tasks[task_id]
 
 
 def task(task_id, default=None):
@@ -955,17 +952,11 @@ def set_attr(k, v):
 def del_attr(k):
     """Deletes the _attr with key k.
     """
+    v = None
     with _attr_lck:
-        try:
+        if k in _attr:
             v = _attr[k]
-        except Exception:
-            v = None
-
-        try:
             del _attr[k]
-        except Exception:
-            pass
-
         return v
 
 

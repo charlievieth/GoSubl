@@ -42,6 +42,7 @@ type Broker struct {
 }
 
 func NewBroker(r io.Reader, w io.Writer, tag string) *Broker {
+	w = DebugWriter(w)
 	return &Broker{
 		tag: tag,
 		r:   r,
@@ -126,6 +127,9 @@ func (b *Broker) call(req *Request, cl Caller) {
 
 func (b *Broker) accept(jobsCh chan Job) (stopLooping bool) {
 	line, err := b.in.ReadBytes('\n')
+
+	// WARN
+	WriteInput(line)
 
 	if err == io.EOF {
 		stopLooping = true

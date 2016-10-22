@@ -20,6 +20,7 @@ except Exception:
     execErr = "Error: failed to exec about.py: Exception: %s" % traceback.format_exc()
     print("GoSublime: %s" % execErr)
 
+# Called by Sublime when the plugin API is ready to use.
 def plugin_loaded():
     from gosubl import about
     from gosubl import sh

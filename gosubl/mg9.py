@@ -195,7 +195,8 @@ def install(aso_install_vesion, force_install):
         start = time.time()
 
         # WARN (CEV): Hard coded GOPATH
-        gopath = gs.dist_path() + os.pathsep + "/Users/Charlie/go"
+        # gopath = gs.dist_path() + os.pathsep + "/Users/Charlie/go"
+        gopath = gs.dist_path() + os.pathsep + sh.getenv('GOPATH')
 
         cmd = sh.Command(['go', 'build', '-v', '-x', '-o', INSTALL_EXE, 'gosubli.me/margo'])
         cmd.wd = gs.home_dir_path('bin')
@@ -467,7 +468,7 @@ def acall(method, arg, cb):
 def bcall(method, arg):
     """Synchronous send to margo.
     """
-    if _inst_state() != "done":
+    if _inst_state() != 'done':
         return {}, 'Blocking call(%s) aborted: Install is not done' % method
 
     q = gs.queue.Queue()
