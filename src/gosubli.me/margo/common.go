@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"go/ast"
 	"go/parser"
-	"go/printer"
 	"go/token"
 	"os"
 	"path/filepath"
@@ -75,7 +74,7 @@ func errStr(err error) string {
 }
 
 func envSlice(envMap map[string]string) []string {
-	env := []string{}
+	env := make([]string, 0, len(envMap))
 	for k, v := range envMap {
 		env = append(env, k+"="+v)
 	}
@@ -112,26 +111,6 @@ func parseAstFile(fn string, s string, mode parser.Mode) (fset *token.FileSet, a
 		fn = "<stdin>"
 	}
 	af, err = parser.ParseFile(fset, fn, src, mode)
-	return
-}
-
-func newPrinter(tabIndent bool, tabWidth int) *printer.Config {
-	mode := printer.UseSpaces
-	if tabIndent {
-		mode |= printer.TabIndent
-	}
-	return &printer.Config{
-		Mode:     mode,
-		Tabwidth: tabWidth,
-	}
-}
-
-func printSrc(fset *token.FileSet, v interface{}, tabIndent bool, tabWidth int) (src string, err error) {
-	p := newPrinter(tabIndent, tabWidth)
-	buf := &bytes.Buffer{}
-	if err = p.Fprint(buf, fset, v); err == nil {
-		src = buf.String()
-	}
 	return
 }
 
@@ -259,7 +238,7 @@ func fileImportPaths(af *ast.File) []string {
 			if gdecl, ok := decl.(*ast.GenDecl); ok {
 				for _, spec := range gdecl.Specs {
 					if ispec, ok := spec.(*ast.ImportSpec); ok && ispec.Path != nil {
-						ipath := unquote(ispec.Path.Value)
+						ipath := strings.Trim(ispec.Path.Value, "\"`")
 						if ipath != "C" {
 							l = append(l, ipath)
 						}

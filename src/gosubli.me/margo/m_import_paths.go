@@ -35,7 +35,7 @@ func (m *mImportPaths) Call() (interface{}, string) {
 				for _, spec := range gdecl.Specs {
 					if ispec, ok := spec.(*ast.ImportSpec); ok {
 						sd := mImportPathsDecl{
-							Path: unquote(ispec.Path.Value),
+							Path: strings.Trim(ispec.Path.Value, "\"`"),
 						}
 						if ispec.Name != nil {
 							sd.Name = ispec.Name.String()
