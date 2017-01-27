@@ -1,13 +1,17 @@
 package main
 
 import (
+	"fmt"
 	"go/ast"
+	"go/build"
 	"go/parser"
+	"go/token"
 	"os"
-	"path"
 	"path/filepath"
 	"runtime"
-	"strings"
+	"strconv"
+
+	"github.com/charlievieth/pkgs"
 )
 
 type mImportPaths struct {
@@ -22,42 +26,98 @@ type mImportPathsDecl struct {
 	Path string `json:"path"`
 }
 
-func (m *mImportPaths) Call() (interface{}, string) {
-	imports := []mImportPathsDecl{}
-	_, af, err := parseAstFile(m.Fn, m.Src, parser.ImportsOnly)
+type mImportPathsResponse struct {
+	Imports []mImportPathsDecl `json:"imports"`
+	Paths   map[string]string  `json:"paths"`
+}
+
+func (m *mImportPaths) FileImports() ([]mImportPathsDecl, error) {
+	fset := token.NewFileSet()
+	af, err := parser.ParseFile(fset, m.Fn, m.Src, parser.ImportsOnly)
 	if err != nil {
-		return M{}, err.Error()
+		return nil, err
 	}
 
-	if m.Fn != "" || m.Src != "" {
-		for _, decl := range af.Decls {
-			if gdecl, ok := decl.(*ast.GenDecl); ok && len(gdecl.Specs) > 0 {
-				for _, spec := range gdecl.Specs {
-					if ispec, ok := spec.(*ast.ImportSpec); ok {
-						sd := mImportPathsDecl{
-							Path: strings.Trim(ispec.Path.Value, "\"`"),
-						}
-						if ispec.Name != nil {
-							sd.Name = ispec.Name.String()
-						}
-						imports = append(imports, sd)
-					}
-				}
+	var imports []mImportPathsDecl
+	for _, decl := range af.Decls {
+		d, ok := decl.(*ast.GenDecl)
+		if !ok {
+			continue
+		}
+		for _, dspec := range d.Specs {
+			spec, ok := dspec.(*ast.ImportSpec)
+			if !ok {
+				continue
 			}
+			quoted := spec.Path.Value
+			path, err := strconv.Unquote(quoted)
+			if err != nil {
+				return nil, fmt.Errorf("%s: parser returned invalid quoted string: <%s>", m.Fn, quoted)
+			}
+			var name string
+			if spec.Name != nil {
+				name = spec.Name.String()
+			}
+			imports = append(imports, mImportPathsDecl{
+				Path: path,
+				Name: name,
+			})
 		}
 	}
 
-	paths := map[string]string{}
-	l, _ := importPaths(m.Env, m.InstallSuffix)
-	for _, p := range l {
+	return imports, nil
+}
+
+func (m *mImportPaths) Call() (interface{}, string) {
+	imports, err := m.FileImports()
+	if err != nil {
+		return M{}, errStr(err)
+	}
+
+	names, err := importPaths(m.Env, m.InstallSuffix, filepath.Dir(m.Fn))
+	if err != nil {
+		return nil, errStr(err)
+	}
+	paths := make(map[string]string, len(names))
+	for _, p := range names {
 		paths[p] = ""
 	}
 
-	res := M{
-		"imports": imports,
-		"paths":   paths,
+	res := mImportPathsResponse{
+		Imports: imports,
+		Paths:   paths,
 	}
 	return res, ""
+}
+
+func importPaths(environ map[string]string, installSuffix, importDir string) ([]string, error) {
+	// TODO:
+	// 	- Consider adding os.GOROOT and os.GOPATH to environ
+	// 	- Check for duplicate paths
+	var root string
+	if s := environ["GOROOT"]; s != "" {
+		root = s
+	} else {
+		root = runtime.GOROOT()
+	}
+	var path string
+	if s := environ["GOPATH"]; s != "" {
+		path = s
+	} else {
+		path = os.Getenv("GOPATH")
+	}
+	ctxt := build.Default
+	if root != "" {
+		ctxt.GOROOT = root
+	}
+	if path != "" {
+		ctxt.GOPATH = path
+	}
+	if installSuffix != "" {
+		ctxt.InstallSuffix = installSuffix
+	}
+
+	return pkgs.Walk(&ctxt, importDir)
 }
 
 func init() {
@@ -66,55 +126,4 @@ func init() {
 			Env: map[string]string{},
 		}
 	})
-}
-
-func importPaths(environ map[string]string, installSuffix string) ([]string, error) {
-	imports := []string{
-		"unsafe",
-	}
-	paths := map[string]bool{}
-
-	env := []string{
-		environ["GOPATH"],
-		environ["GOROOT"],
-		os.Getenv("GOPATH"),
-		os.Getenv("GOROOT"),
-		runtime.GOROOT(),
-	}
-	for _, ent := range env {
-		for _, path := range filepath.SplitList(ent) {
-			if path != "" {
-				paths[path] = true
-			}
-		}
-	}
-
-	seen := map[string]bool{}
-	pfx := strings.HasPrefix
-	sfx := strings.HasSuffix
-	osArchSfx := osArch
-	if installSuffix != "" {
-		osArchSfx += "_" + installSuffix
-	}
-	for root, _ := range paths {
-		root = filepath.Join(root, "pkg", osArchSfx)
-		walkF := func(p string, info os.FileInfo, err error) error {
-			if err == nil && !info.IsDir() {
-				p, e := filepath.Rel(root, p)
-				if e == nil && sfx(p, ".a") {
-					p := p[:len(p)-2]
-					if !pfx(p, ".") && !pfx(p, "_") && !sfx(p, "_test") {
-						p = path.Clean(filepath.ToSlash(p))
-						if !seen[p] {
-							seen[p] = true
-							imports = append(imports, p)
-						}
-					}
-				}
-			}
-			return nil
-		}
-		filepath.Walk(root, walkF)
-	}
-	return imports, nil
 }
