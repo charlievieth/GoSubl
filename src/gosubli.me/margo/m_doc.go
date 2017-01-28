@@ -4,7 +4,7 @@ import (
 	"go/build"
 	"path/filepath"
 
-	"git.vieth.io/godef"
+	"github.com/charlievieth/godef"
 )
 
 func init() {

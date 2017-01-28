@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"strings"
 
-	"git.vieth.io/mgo/gotype"
+	"github.com/charlievieth/gotype"
 )
 
 type mLintReport struct {

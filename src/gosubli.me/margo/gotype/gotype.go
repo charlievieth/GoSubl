@@ -9,7 +9,7 @@ import (
 	"go/types"
 	"path/filepath"
 
-	"git.vieth.io/goimporter"
+	"github.com/charlievieth/goimporter"
 )
 
 const ReportKind = "gs.syntax"

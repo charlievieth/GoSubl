@@ -12,7 +12,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"git.vieth.io/gocode"
+	"github.com/charlievieth/gocode"
 )
 
 type GoCode struct {
