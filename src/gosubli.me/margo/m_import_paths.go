@@ -38,7 +38,7 @@ func (m *mImportPaths) FileImports() ([]mImportPathsDecl, error) {
 		return nil, err
 	}
 
-	var imports []mImportPathsDecl
+	imports := make([]mImportPathsDecl, 0, 8)
 	for _, decl := range af.Decls {
 		d, ok := decl.(*ast.GenDecl)
 		if !ok {
