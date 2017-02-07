@@ -26,6 +26,14 @@ type mSh struct {
 //       handle And, Or
 func (m *mSh) Call() (interface{}, string) {
 	env := envSlice(m.Env)
+	n := 0
+	for i, s := range env {
+		if !strings.HasPrefix(s, "GOOS=") {
+			env[n] = env[i]
+			n++
+		}
+	}
+	env = env[:n]
 
 	if m.Cid == "" {
 		m.Cid = "sh.auto." + numbers.nextString()
