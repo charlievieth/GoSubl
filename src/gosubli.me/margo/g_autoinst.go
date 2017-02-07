@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -48,12 +49,28 @@ func (a *AutoInstOptions) imports() map[string]string {
 	return m
 }
 
+func (a *AutoInstOptions) envOr(key, def string) string {
+	if a.Env != nil {
+		if s := a.Env[key]; s != "" {
+			return s
+		}
+	}
+	if s := os.Getenv(key); s != "" {
+		return s
+	}
+	return def
+}
+
+func (a *AutoInstOptions) osArch() string {
+	return a.envOr("GOOS", runtime.GOOS) + "_" + a.envOr("GOARCH", runtime.GOARCH)
+}
+
 func (a *AutoInstOptions) install() {
 	sfx := ""
 	if a.InstallSuffix != "" {
 		sfx = a.InstallSuffix
 	}
-	osArchSfx := osArch + sfx
+	osArchSfx := a.osArch() + sfx
 	if a.Env == nil {
 		a.Env = map[string]string{}
 	}
