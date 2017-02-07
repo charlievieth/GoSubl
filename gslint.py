@@ -226,6 +226,7 @@ def do_comp_lint(dirname, fn):
 
             shell = c.get('shell') is True
             env = {} if c.get('global') is True else local_env
+            env['GOSUBL_LINT_FILENAME'] = fn
             out, err, _ = gsshell.run(cmd=cmd, shell=shell, cwd=dirname, env=env)
             if err:
                 gs.notice(DOMAIN, err)
