@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	fileExts = map[string]void{}
+	fileExts = map[string]struct{}{}
 )
 
 func init() {
@@ -89,7 +89,7 @@ func init() {
 	}
 
 	for _, ext := range exts {
-		fileExts[ext] = void{}
+		fileExts[ext] = struct{}{}
 	}
 }
 

@@ -65,11 +65,11 @@ func pkgPaths(srcDir string, exclude []string) map[string]string {
 	done := make(chan struct{})
 	ch := make(chan string, 100)
 	fset := token.NewFileSet()
-	seen := map[string]void{}
-	excluded := map[string]void{}
+	seen := map[string]struct{}{}
+	excluded := map[string]struct{}{}
 
 	for _, s := range exclude {
-		excluded[s] = void{}
+		excluded[s] = struct{}{}
 	}
 
 	proc := func(fn string) {
@@ -104,7 +104,7 @@ func pkgPaths(srcDir string, exclude []string) map[string]string {
 		}
 
 		if _, skip := excluded[name]; skip {
-			seen[p] = void{}
+			seen[p] = struct{}{}
 			return
 		}
 

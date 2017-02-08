@@ -11,18 +11,11 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
-	"time"
 	"unicode/utf8"
 )
 
-var (
-	sRuneError = eRune()
-	osArch     = runtime.GOOS + "_" + runtime.GOARCH
-)
-
-type void struct{}
+var sRuneError = eRune()
 
 type jString string
 
@@ -62,10 +55,6 @@ func (d jData) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func uid() string {
-	return "mg#" + strconv.FormatUint(numbers.next(), 16)
-}
-
 func errStr(err error) string {
 	if err != nil {
 		return err.Error()
@@ -90,15 +79,6 @@ func defaultEnv() map[string]string {
 		"GOARCH": runtime.GOARCH,
 		"GOOS":   runtime.GOOS,
 	}
-}
-
-func orString(a ...string) string {
-	for _, s := range a {
-		if s != "" {
-			return s
-		}
-	}
-	return ""
 }
 
 func parseAstFile(fn string, s string, mode parser.Mode) (fset *token.FileSet, af *ast.File, err error) {
@@ -217,10 +197,6 @@ func post(r Response) {
 	sendCh <- r
 }
 
-func dbg(format string, a ...interface{}) {
-	postMessage("dbg: "+format, a...)
-}
-
 func postMessage(format string, a ...interface{}) {
 	post(Response{
 		Token: "margo.message",
@@ -266,12 +242,6 @@ func envRootList(env map[string]string) (string, []string) {
 		return "", []string{}
 	}
 	return env["GOROOT"], pathList(env["GOPATH"])
-}
-
-func msDur(start time.Time) time.Duration {
-	dur := time.Now().Sub(start)
-	dur -= dur % time.Millisecond
-	return dur
 }
 
 func bytePos(src string, charPos int) int {
