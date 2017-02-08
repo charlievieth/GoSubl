@@ -21,9 +21,9 @@ type mLintReport struct {
 }
 
 type mLint struct {
-	Dir jString
-	Fn  jString
-	Src jString
+	Dir JsonString
+	Fn  JsonString
+	Src JsonString
 	v   struct {
 		dir string
 		fn  string

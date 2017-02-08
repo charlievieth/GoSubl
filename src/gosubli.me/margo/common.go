@@ -12,47 +12,36 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"unicode/utf8"
 )
 
-var sRuneError = eRune()
+type JsonString string
 
-type jString string
-
-func (s jString) String() string {
+func (s JsonString) String() string {
 	return string(s)
 }
 
-func (s *jString) UnmarshalJSON(p []byte) error {
+func (s *JsonString) UnmarshalJSON(p []byte) error {
 	if bytes.Equal(p, []byte("null")) {
 		return nil
 	}
 	return json.Unmarshal(p, (*string)(s))
 }
 
-type jData []byte
+type JsonData []byte
 
-func (d jData) MarshalJSON() ([]byte, error) {
+func (d JsonData) String() string {
+	return string(d)
+}
+
+func (d JsonData) MarshalJSON() ([]byte, error) {
+	const pad = len(`"base64:"`)
 	if len(d) == 0 {
 		return []byte(`""`), nil
 	}
-
-	buf := bytes.NewBufferString(`"base64:`)
-	enc := base64.NewEncoder(base64.StdEncoding, buf)
-
-	for len(d) > 0 {
-		r, n := utf8.DecodeRune(d)
-		if r == utf8.RuneError {
-			enc.Write(sRuneError)
-		} else {
-			enc.Write(d[:n])
-		}
-		d = d[n:]
-	}
-
-	enc.Close()
-	buf.WriteByte('"')
-	return buf.Bytes(), nil
+	b := make([]byte, base64.StdEncoding.EncodedLen(len(d))+pad)
+	base64.StdEncoding.Encode(b[copy(b, `"base64:`):], d)
+	b[len(b)-1] = '"'
+	return b, nil
 }
 
 func errStr(err error) string {
@@ -161,13 +150,6 @@ func findPkg(fset *token.FileSet, importPath string, dirs []string, mode parser.
 		}
 	}
 	return
-}
-
-func eRune() []byte {
-	s := make([]byte, utf8.RuneLen(utf8.RuneError))
-	n := utf8.EncodeRune(s, utf8.RuneError)
-	s = s[:n]
-	return s
 }
 
 func tempDir(env map[string]string, subDirs ...string) string {

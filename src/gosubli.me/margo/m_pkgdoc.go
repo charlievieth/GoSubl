@@ -10,8 +10,8 @@ import (
 )
 
 type mPkgdoc struct {
-	Q    jString
-	Path jString
+	Q    JsonString
+	Path JsonString
 }
 
 type mPkgdocDoc struct {
