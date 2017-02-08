@@ -73,14 +73,22 @@ func init() {
 	byeDefer(func() {
 		cmdWatchLck.Lock()
 		defer cmdWatchLck.Unlock()
+		wg := new(sync.WaitGroup)
 		for _, c := range cmdWatchlist {
-			c.Process.Kill()
-			c.Process.Release()
+			if c == nil || c.Process == nil {
+				continue
+			}
+			wg.Add(1)
+			go func(c *exec.Cmd) {
+				defer wg.Done()
+				c.Process.Kill()
+				c.Process.Release()
+			}(c)
 		}
+		wg.Wait()
 	})
 
 	registry.Register("kill", func(b *Broker) Caller {
 		return &mKill{}
 	})
-
 }

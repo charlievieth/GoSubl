@@ -9,18 +9,15 @@ import (
 	"io"
 	"log"
 	"os"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
 )
 
 var (
-	byeLck            = sync.Mutex{}
-	byeFuncs *byeFunc = nil
-	numbers           = &counter{}
-	logger            = log.New(os.Stderr, "margo: ", log.Ldate|log.Ltime|log.Lshortfile)
-	sendCh            = make(chan Response, 100)
+	numbers = &counter{}
+	logger  = log.New(os.Stderr, "margo: ", log.Ldate|log.Ltime|log.Lshortfile)
+	sendCh  = make(chan Response, 100)
 )
 
 type counter struct {
@@ -48,18 +45,15 @@ func (c *counter) nextString() string {
 	return fmt.Sprint(c.n)
 }
 
-type byeFunc struct {
-	prev *byeFunc
-	f    func()
+var byeFuncs struct {
+	sync.Mutex
+	fns []func()
 }
 
 func byeDefer(f func()) {
-	byeLck.Lock()
-	defer byeLck.Unlock()
-	byeFuncs = &byeFunc{
-		prev: byeFuncs,
-		f:    f,
-	}
+	byeFuncs.Lock()
+	byeFuncs.fns = append(byeFuncs.fns, f)
+	byeFuncs.Unlock()
 }
 
 func main() {
@@ -78,9 +72,6 @@ func main() {
 	flags.StringVar(&tag, "tag", tag, "Requests will include a member `tag' with this value")
 	flags.IntVar(&maxMem, "oom", maxMemDefault, "The maximum amount of memory MarGo is allowed to use. If memory use reaches this value, MarGo dies :'(")
 	flags.Parse(os.Args[1:])
-
-	// 4 is arbitrary,
-	runtime.GOMAXPROCS(runtime.NumCPU() + 4)
 
 	if maxMem <= 0 {
 		maxMem = maxMemDefault
@@ -139,20 +130,23 @@ func main() {
 
 	broker.Loop(!doCall, (wait || doCall))
 
-	byeLck.Lock()
-	defer byeLck.Unlock() // keep this here for the sake of code correctness
-	for b := byeFuncs; b != nil; b = b.prev {
-		func() {
+	byeFuncs.Lock()
+	defer byeFuncs.Unlock()
+	wg := new(sync.WaitGroup)
+	for _, fn := range byeFuncs.fns {
+		if fn == nil {
+			continue
+		}
+		wg.Add(1)
+		go func(fn func()) {
+			defer wg.Done()
 			defer func() {
-				err := recover()
-				if err != nil {
-					logger.Println("PANIC defer:", err)
+				if e := recover(); e != nil {
+					logger.Println("PANIC defer:", e)
 				}
 			}()
-
-			b.f()
-		}()
+			fn()
+		}(fn)
 	}
-
-	os.Exit(0)
+	wg.Wait()
 }
