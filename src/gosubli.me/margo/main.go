@@ -50,10 +50,12 @@ var byeFuncs struct {
 	fns []func()
 }
 
-func byeDefer(f func()) {
-	byeFuncs.Lock()
-	byeFuncs.fns = append(byeFuncs.fns, f)
-	byeFuncs.Unlock()
+func byeDefer(fn func()) {
+	if fn != nil {
+		byeFuncs.Lock()
+		byeFuncs.fns = append(byeFuncs.fns, fn)
+		byeFuncs.Unlock()
+	}
 }
 
 func main() {
@@ -89,7 +91,7 @@ func main() {
 			}
 		}
 		json.NewEncoder(os.Stdout).Encode(m)
-		os.Exit(0)
+		return
 	}
 
 	var in io.Reader = os.Stdin
@@ -131,13 +133,9 @@ func main() {
 	broker.Loop(!doCall, (wait || doCall))
 
 	byeFuncs.Lock()
-	defer byeFuncs.Unlock()
 	wg := new(sync.WaitGroup)
+	wg.Add(len(byeFuncs.fns))
 	for _, fn := range byeFuncs.fns {
-		if fn == nil {
-			continue
-		}
-		wg.Add(1)
 		go func(fn func()) {
 			defer wg.Done()
 			defer func() {
@@ -149,4 +147,5 @@ func main() {
 		}(fn)
 	}
 	wg.Wait()
+	byeFuncs.Unlock()
 }
