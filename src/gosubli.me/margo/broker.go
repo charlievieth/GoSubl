@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+var EmptyResponse = struct{}{}
+
 type M map[string]interface{}
 
 type Request struct {
