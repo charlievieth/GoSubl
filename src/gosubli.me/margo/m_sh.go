@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -22,19 +24,36 @@ type mSh struct {
 	Cwd string
 }
 
+func (m *mSh) updateGOOS() bool {
+	if len(m.Cmd.Args) == 0 {
+		return false
+	}
+	name := strings.ToLower(filepath.Base(m.Cmd.Name))
+	if name == "go" || name == "go.exe" {
+		arg := strings.ToLower(m.Cmd.Args[0])
+		return arg == "run" || arg == "test"
+	}
+	return false
+}
+
+func (m *mSh) environment() []string {
+	env := envSlice(m.Env)
+	if m.updateGOOS() {
+		for i, s := range env {
+			switch {
+			case strings.HasPrefix(s, "GOOS="):
+				env[i] = "GOOS=" + runtime.GOOS
+			case strings.HasPrefix(s, "GOARCH="):
+				env[i] = "GOARCH=" + runtime.GOARCH
+			}
+		}
+	}
+	return env
+}
+
 // todo: send the client output as it comes
 //       handle And, Or
 func (m *mSh) Call() (interface{}, string) {
-	env := envSlice(m.Env)
-	n := 0
-	for i, s := range env {
-		if !strings.HasPrefix(s, "GOOS=") {
-			env[n] = env[i]
-			n++
-		}
-	}
-	env = env[:n]
-
 	if m.Cid == "" {
 		m.Cid = "sh.auto." + numbers.nextString()
 	} else {
@@ -42,16 +61,17 @@ func (m *mSh) Call() (interface{}, string) {
 	}
 
 	start := time.Now()
-	stdErr := bytes.NewBuffer(nil)
-	stdOut := bytes.NewBuffer(nil)
+	var stdErr bytes.Buffer
+	var stdOut bytes.Buffer
+
 	c := exec.Command(m.Cmd.Name, m.Cmd.Args...)
-	c.Stdout = stdOut
-	c.Stderr = stdErr
+	c.Stdout = &stdOut
+	c.Stderr = &stdErr
 	if m.Cmd.Input != "" {
 		c.Stdin = strings.NewReader(m.Cmd.Input)
 	}
 	c.Dir = m.Cwd
-	c.Env = env
+	c.Env = m.environment()
 
 	watchCmd(m.Cid, c)
 	err := c.Run()
