@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"io"
 	"os"
+	"os/user"
 	"path/filepath"
 )
 
@@ -33,14 +34,25 @@ var (
 
 func init() {
 	if DEBUG {
-		const dirname = "/Users/Charlie/Desktop/GoSublime_Logs"
+		user, err := user.Current()
+		if err != nil {
+			return
+		}
+		if user.HomeDir == "" {
+			return
+		}
+		dirname := filepath.Join(user.HomeDir, "Desktop", "GoSublime_Logs")
+		if err := os.MkdirAll(dirname, 0755); err != nil {
+			return
+		}
+
 		stdinName := filepath.Join(dirname, "stdin.log")
-		fi, err := os.OpenFile(stdinName, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+		fi, err := os.OpenFile(stdinName, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0664)
 		if err != nil {
 			return
 		}
 		stdoutName := filepath.Join(dirname, "stdout.log")
-		fo, err := os.OpenFile(stdoutName, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+		fo, err := os.OpenFile(stdoutName, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0664)
 		if err != nil {
 			return
 		}

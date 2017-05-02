@@ -120,6 +120,7 @@ func (g *GoCode) GOROOT() string {
 	return runtime.GOROOT()
 }
 
+// TODO: cache results and potentially cache AST ad file set.
 func (g *GoCode) calltips(filename string, src []byte, offset int) ([]gocode.Candidate, error) {
 	fset := token.NewFileSet()
 	af, err := parser.ParseFile(fset, filename, src, 0)
@@ -244,3 +245,103 @@ func init() {
 		return &GoCode{calltip: true}
 	})
 }
+
+// Initial implementation of calltips cache
+/*
+
+import (
+	"fmt"
+	"sync"
+
+	"github.com/golang/groupcache/lru"
+)
+
+type Candidate struct {
+	Name  string `json:"name"`
+	Type  string `json:"type"`
+	Class string `json:"class"`
+}
+
+type FileEntry struct {
+	Name       string            // file name
+	Source     string            // file source
+	Candidates map[int]Candidate // decl offset => Candidate
+	mu         sync.RWMutex
+}
+
+func NewFileEntry(name, source string) *FileEntry {
+	return &FileEntry{
+		Name:       name,
+		Source:     source,
+		Candidates: make(map[int]Candidate),
+	}
+}
+
+func (f *FileEntry) Get(pos int) (c Candidate, ok bool) {
+	f.mu.RLock()
+	if f.Candidates != nil {
+		c, ok = f.Candidates[pos]
+	}
+	f.mu.RUnlock()
+	return
+}
+
+func (f *FileEntry) Add(pos int, c Candidate) {
+	f.mu.Lock()
+	if f.Candidates == nil {
+		f.Candidates = make(map[int]Candidate)
+	}
+	f.Candidates[pos] = c
+	f.mu.Unlock()
+}
+
+type Cache struct {
+	cache *lru.Cache
+	mu    sync.Mutex
+}
+
+func New() *Cache {
+	return &Cache{cache: lru.New(128)}
+}
+
+func (c *Cache) Get(name, source string, pos int) (Candidate, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	v, ok := c.cache.Get(name)
+	if !ok {
+		return Candidate{}, false
+	}
+	e := v.(*FileEntry)
+	if e.Source != source {
+		return Candidate{}, false
+	}
+	return e.Get(pos)
+}
+
+func (c *Cache) Add(name, source string, pos int, can Candidate) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	var e *FileEntry
+	if v, ok := c.cache.Get(name); ok {
+		e = v.(*FileEntry)
+		if e.Source != source {
+			c.cache.Remove(name)
+			e = nil
+		}
+	}
+	if e == nil {
+		e = NewFileEntry(name, source)
+	}
+	e.Add(pos, can)
+	c.cache.Add(name, e)
+}
+
+func main() {
+	c := New()
+	c.Add("name", "source", 1, Candidate{Name: "c1", Type: "t1", Class: "c1"})
+	fmt.Println(c.Get("name", "source", 1))
+	c.Add("name", "source new", 1, Candidate{Name: "c1", Type: "t1", Class: "c1"})
+	fmt.Println(c.Get("name", "source", 1))
+	fmt.Println(c.Get("name", "source new", 1))
+}
+*/
