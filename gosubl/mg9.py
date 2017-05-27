@@ -304,6 +304,33 @@ def install(aso_install_vesion, force_install):
             report_x()
 
 
+class CalltipCache(object):
+    def __init__(self):
+        self.lck = threading.Lock()
+        self.pos = 0
+        self.src = ''
+        self.fn = ''
+        self.res = []
+        self.err = ''
+
+    def get(self, fn, src, pos):
+        with self.lck:
+            if pos == self.pos and fn == self.fn and src == self.src:
+                return self.res, self.err, True
+        return None, None, False
+
+    def set(self, fn, src, pos, res, err):
+        with self.lck:
+            self.fn = fn
+            self.src = src
+            self.pos = pos
+            self.res = res
+            self.err = err
+
+
+calltip_cache = CalltipCache()
+
+
 def calltip(fn, src, pos, quiet, f):
     tid = ''
     if not quiet:
@@ -314,7 +341,15 @@ def calltip(fn, src, pos, quiet, f):
             gs.end(tid)
 
         res = gs.dval(res.get('Candidates'), [])
+        calltip_cache.set(fn, src, pos, res, err)
         f(res, err)
+
+    res, err, ok = calltip_cache.get(fn, src, pos)
+    if ok:
+        if tid:
+            gs.end(tid)
+        f(res, err)
+        return
 
     return acall('gocode_calltip', _complete_opts(fn, src, pos, True), cb)
 
