@@ -2,7 +2,6 @@ package main
 
 import (
 	"go/build"
-	"path/filepath"
 
 	"github.com/charlievieth/godef"
 )
@@ -37,10 +36,10 @@ type FindResponse struct {
 func (f *FindRequest) Call() (interface{}, string) {
 	ctxt := build.Default
 	if f.Env != nil {
-		if s := f.Env["GOPATH"]; s != "" {
+		if s, ok := f.Env["GOPATH"]; ok && isDir(s) {
 			ctxt.GOPATH = s
 		}
-		if s := f.Env["GOROOT"]; s != "" {
+		if s, ok := f.Env["GOROOT"]; ok && isDir(s) {
 			ctxt.GOROOT = s
 		}
 		if s := f.Env["GOOS"]; s != "" {
@@ -50,8 +49,7 @@ func (f *FindRequest) Call() (interface{}, string) {
 	conf := godef.Config{
 		Context: ctxt,
 	}
-	fn := filepath.Clean(f.Fn)
-	pos, src, err := conf.Define(fn, f.Offset, f.Src)
+	pos, src, err := conf.Define(f.Fn, f.Offset, f.Src)
 	if err != nil {
 		return nil, err.Error()
 	}

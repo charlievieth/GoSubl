@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"unicode/utf8"
 )
 
 type JsonString string
@@ -152,29 +153,6 @@ func findPkg(fset *token.FileSet, importPath string, dirs []string, mode parser.
 	return
 }
 
-func tempDir(env map[string]string, subDirs ...string) string {
-	dir := ""
-
-	if env != nil {
-		for _, k := range []string{"TMP", "TMPDIR"} {
-			dir = env[k]
-			if dir != "" {
-				break
-			}
-		}
-	}
-
-	if dir == "" {
-		dir = os.TempDir()
-	}
-
-	args := append([]string{dir, "GoSublime-temp"}, subDirs...)
-	dir = filepath.Join(args...)
-	os.MkdirAll(dir, 0777)
-
-	return dir
-}
-
 func post(r Response) {
 	sendCh <- r
 }
@@ -226,12 +204,25 @@ func envRootList(env map[string]string) (string, []string) {
 	return env["GOROOT"], pathList(env["GOPATH"])
 }
 
-func bytePos(src string, charPos int) int {
-	for i, _ := range src {
-		if charPos <= 0 {
-			return i
+func bytePos(src string, pos int) int {
+	var i int
+	ns := len(src)
+	for n := 0; n < pos && i < ns; n++ {
+		// ASCII fast path
+		if src[i] < utf8.RuneSelf {
+			i++
+			continue
 		}
-		charPos--
+		_, size := utf8.DecodeRuneInString(src[i:])
+		i += size
 	}
-	return -1
+	return i
+}
+
+func isDir(name string) bool {
+	if name == "" {
+		return false
+	}
+	fi, err := os.Stat(name)
+	return err == nil && fi.IsDir()
 }
