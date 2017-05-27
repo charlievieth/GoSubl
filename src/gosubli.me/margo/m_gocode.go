@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"unicode/utf8"
 
 	"github.com/charlievieth/gocode"
@@ -41,29 +42,66 @@ type GoCodeResponse struct {
 	Candidates []gocode.Candidate
 }
 
-// WARN: Add auto install
+var lastCalltip struct {
+	sync.Mutex
+	Path string
+	Src  string
+	Off  int
+	Res  GoCodeResponse
+}
+
+func useLastCalltip(path, src string, off int) (res GoCodeResponse, ok bool) {
+	lastCalltip.Lock()
+	if off == lastCalltip.Off && path == lastCalltip.Path && src == lastCalltip.Src {
+		res = lastCalltip.Res
+		ok = true
+	}
+	lastCalltip.Unlock()
+	return
+}
+
+func setLastCalltip(path, src string, off int, res GoCodeResponse) {
+	lastCalltip.Lock()
+	if off != lastCalltip.Off || path != lastCalltip.Path || src != lastCalltip.Src {
+		lastCalltip.Off = off
+		lastCalltip.Path = path
+		lastCalltip.Src = src
+		lastCalltip.Res = res
+	}
+	lastCalltip.Unlock()
+	return
+}
+
 func (g *GoCode) Call() (interface{}, string) {
 	off, err := g.bytePos()
 	if err != nil {
-		return g.response(nil, err)
+		return g.response(nil, err, false)
 	}
 	path := g.filepath()
 	if g.calltip {
-		return g.response(g.calltips(path, []byte(g.Src), off))
+		if res, ok := useLastCalltip(path, g.Src, off); ok {
+			return res, ""
+		}
+		gr, err := g.calltips(path, []byte(g.Src), off)
+		res, errStr := g.response(gr, err, false)
+		setLastCalltip(path, g.Src, off, res)
+		return res, errStr
 	}
-	return g.response(g.complete(path, []byte(g.Src), off), nil)
+	return g.response(g.complete(path, []byte(g.Src), off), nil, true)
 }
 
-func (g *GoCode) response(res []gocode.Candidate, err error) (GoCodeResponse, string) {
+var NoGocodeCandidates = []gocode.Candidate{}
+
+func (g *GoCode) response(res []gocode.Candidate, err error, install bool) (GoCodeResponse, string) {
 	if res == nil || len(res) == 0 {
-		if g.Autoinst {
+		if install && g.Autoinst {
 			autoInstall(AutoInstOptions{
 				Src:           g.Src,
 				Env:           g.Env,
 				InstallSuffix: g.InstallSuffix,
 			})
 		}
-		res = []gocode.Candidate{}
+		res = NoGocodeCandidates
 	}
 	var errStr string
 	if err != nil {
