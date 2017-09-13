@@ -16,8 +16,8 @@ import (
 	"sync"
 	"unicode/utf8"
 
-	"git.vieth.io/mgo_old/lru"
 	"github.com/charlievieth/gocode"
+	"github.com/golang/groupcache/lru"
 )
 
 type GoCode struct {
