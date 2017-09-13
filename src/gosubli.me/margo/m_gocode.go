@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -13,6 +16,7 @@ import (
 	"sync"
 	"unicode/utf8"
 
+	"git.vieth.io/mgo_old/lru"
 	"github.com/charlievieth/gocode"
 )
 
@@ -36,6 +40,18 @@ type GoCodeCalltip struct {
 
 func (g *GoCodeCalltip) Init() {
 	g.calltip = true
+}
+
+var calltipCache = NewAstCache(200)
+
+func init() {
+	registry.Register("gocode_complete", func(b *Broker) Caller {
+		return &GoCode{}
+	})
+
+	registry.Register("gocode_calltip", func(b *Broker) Caller {
+		return &GoCode{calltip: true}
+	})
 }
 
 type GoCodeResponse struct {
@@ -160,8 +176,7 @@ func (g *GoCode) GOROOT() string {
 
 // TODO: cache results and potentially cache AST ad file set.
 func (g *GoCode) calltips(filename string, src []byte, offset int) ([]gocode.Candidate, error) {
-	fset := token.NewFileSet()
-	af, err := parser.ParseFile(fset, filename, src, 0)
+	fset, af, err := calltipCache.ParseFile(filename, src)
 	if af == nil {
 		return nil, err
 	}
@@ -274,14 +289,93 @@ func (g *GoCode) bytePos() (int, error) {
 	return -1, fmt.Errorf("gocode: invalid offset: %d", g.Pos)
 }
 
-func init() {
-	registry.Register("gocode_complete", func(b *Broker) Caller {
-		return &GoCode{}
-	})
+type AstEntry struct {
+	Name    string
+	Body    []byte
+	File    *ast.File
+	FileSet *token.FileSet
+}
 
-	registry.Register("gocode_calltip", func(b *Broker) Caller {
-		return &GoCode{calltip: true}
+type AstCache struct {
+	cache *lru.Cache
+	mu    sync.Mutex
+}
+
+func NewAstCache(maxEntries int) *AstCache {
+	return &AstCache{
+		cache: lru.New(maxEntries),
+	}
+}
+
+func (c *AstCache) Add(filename string, ent *AstEntry) {
+	c.mu.Lock()
+	c.cache.Add(filename, ent)
+	c.mu.Unlock()
+}
+
+func (c *AstCache) Get(filename string) (*AstEntry, bool) {
+	c.mu.Lock()
+	v, ok := c.cache.Get(filename)
+	c.mu.Unlock()
+	if ok {
+		return v.(*AstEntry), true
+	}
+	return nil, false
+}
+
+func (c *AstCache) Remove(filename string) {
+	c.mu.Lock()
+	c.cache.Remove(filename)
+	c.mu.Unlock()
+}
+
+func (c *AstCache) ParseFile(filename string, src interface{}) (*token.FileSet, *ast.File, error) {
+	text, err := readSource(filename, src)
+	if err != nil {
+		return nil, nil, err
+	}
+	if e, ok := c.Get(filename); ok {
+		if bytes.Equal(e.Body, text) {
+			return e.FileSet, e.File, nil
+		}
+		c.Remove(filename)
+	}
+	fset := token.NewFileSet()
+	af, err := parser.ParseFile(fset, filename, text, 0)
+	if af == nil {
+		return nil, nil, err
+	}
+	c.Add(filename, &AstEntry{
+		Name:    filename,
+		Body:    text,
+		File:    af,
+		FileSet: fset,
 	})
+	return fset, af, nil
+}
+
+func readSource(filename string, src interface{}) ([]byte, error) {
+	if src != nil {
+		switch s := src.(type) {
+		case string:
+			return []byte(s), nil
+		case []byte:
+			return s, nil
+		case *bytes.Buffer:
+			// is io.Reader, but src is already available in []byte form
+			if s != nil {
+				return s.Bytes(), nil
+			}
+		case io.Reader:
+			var buf bytes.Buffer
+			if _, err := io.Copy(&buf, s); err != nil {
+				return nil, err
+			}
+			return buf.Bytes(), nil
+		}
+		return nil, errors.New("invalid source")
+	}
+	return ioutil.ReadFile(filename)
 }
 
 // Initial implementation of calltips cache
