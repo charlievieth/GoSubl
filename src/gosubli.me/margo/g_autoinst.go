@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"go/parser"
 	"io/ioutil"
 	"os"
@@ -123,6 +124,15 @@ func (a *AutoInstOptions) install() {
 
 	if len(installed) > 0 {
 		postMessage("auto-installed: %v", strings.Join(installed, ", "))
+	}
+}
+
+func postMessage(format string, a ...interface{}) {
+	sendCh <- Response{
+		Token: "margo.message",
+		Data: M{
+			"message": fmt.Sprintf(format, a...),
+		},
 	}
 }
 

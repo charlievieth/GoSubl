@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -12,7 +11,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"unicode/utf8"
 )
 
 type JsonString string
@@ -153,19 +151,6 @@ func findPkg(fset *token.FileSet, importPath string, dirs []string, mode parser.
 	return
 }
 
-func post(r Response) {
-	sendCh <- r
-}
-
-func postMessage(format string, a ...interface{}) {
-	post(Response{
-		Token: "margo.message",
-		Data: M{
-			"message": fmt.Sprintf(format, a...),
-		},
-	})
-}
-
 func fileImportPaths(af *ast.File) []string {
 	l := []string{}
 
@@ -188,13 +173,15 @@ func fileImportPaths(af *ast.File) []string {
 }
 
 func pathList(p string) []string {
-	l := []string{}
-	for _, s := range strings.Split(p, string(filepath.ListSeparator)) {
-		if s != "" {
-			l = append(l, s)
+	a := strings.Split(p, string(filepath.ListSeparator))
+	n := 0
+	for i, s := range a {
+		if len(s) > 0 {
+			a[n] = a[i]
+			n++
 		}
 	}
-	return l
+	return a[:n]
 }
 
 func envRootList(env map[string]string) (string, []string) {
@@ -202,21 +189,6 @@ func envRootList(env map[string]string) (string, []string) {
 		return "", []string{}
 	}
 	return env["GOROOT"], pathList(env["GOPATH"])
-}
-
-func bytePos(src string, pos int) int {
-	var i int
-	ns := len(src)
-	for n := 0; n < pos && i < ns; n++ {
-		// ASCII fast path
-		if src[i] < utf8.RuneSelf {
-			i++
-			continue
-		}
-		_, size := utf8.DecodeRuneInString(src[i:])
-		i += size
-	}
-	return i
 }
 
 func isDir(name string) bool {
