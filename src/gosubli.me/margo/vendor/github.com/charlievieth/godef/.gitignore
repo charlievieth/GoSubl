@@ -1,0 +1,5 @@
+godef
+*.exe
+*.test
+*.out
+*.txt
