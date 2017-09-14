@@ -257,10 +257,11 @@ func (v *calltipVisitor) Visit(node ast.Node) (w ast.Visitor) {
 	if x, ok := node.(*ast.CallExpr); ok {
 		pos := x.Pos()
 		end := x.End()
-		if pos.IsValid() && end.IsValid() {
-			if pos <= v.pos && v.pos <= end {
-				v.expr = x
-			}
+		switch {
+		case pos <= v.pos && v.pos <= end:
+			v.expr = x
+		case pos > v.pos:
+			return nil
 		}
 	}
 	return v
