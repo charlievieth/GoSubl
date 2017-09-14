@@ -251,7 +251,7 @@ type calltipVisitor struct {
 }
 
 func (v *calltipVisitor) Visit(node ast.Node) (w ast.Visitor) {
-	if node == nil || v.expr != nil {
+	if node == nil {
 		return v
 	}
 	if x, ok := node.(*ast.CallExpr); ok {
@@ -260,7 +260,6 @@ func (v *calltipVisitor) Visit(node ast.Node) (w ast.Visitor) {
 		if pos.IsValid() && end.IsValid() {
 			if pos <= v.pos && v.pos <= end {
 				v.expr = x
-				return nil
 			}
 		}
 	}
