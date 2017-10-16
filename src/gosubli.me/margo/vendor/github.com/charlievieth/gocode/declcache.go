@@ -74,11 +74,22 @@ func new_decl_file_cache(name string, context *package_lookup_context) *decl_fil
 	}
 }
 
-func (f *decl_file_cache) update(mtime int64) {
-	if f.mtime != mtime {
-		f.mtime = mtime
-		f.read_file()
+func (f *decl_file_cache) update() {
+	stat, err := os.Stat(f.name)
+	if err != nil {
+		f.decls = nil
+		f.error = err
+		f.fset = nil
+		return
 	}
+
+	statmtime := stat.ModTime().UnixNano()
+	if f.mtime == statmtime {
+		return
+	}
+
+	f.mtime = statmtime
+	f.read_file()
 }
 
 func (f *decl_file_cache) read_file() {
@@ -253,7 +264,7 @@ func log_build_context(context *package_lookup_context) {
 	log.Printf(" GOARCH: %s\n", context.GOARCH)
 	log.Printf(" BzlProjectRoot: %q\n", context.BzlProjectRoot)
 	log.Printf(" GBProjectRoot: %q\n", context.GBProjectRoot)
-	log.Printf(" lib-path: %q\n", g_config.LibPath)
+	log.Printf(" lib-path: %q\n", g_config.LibPath())
 }
 
 // find_global_file returns the file path of the compiled package corresponding to the specified
@@ -475,8 +486,8 @@ func (c *decl_cache) get(filename string) *decl_file_cache {
 	return f
 }
 
-func (c *decl_cache) get_and_update(p *package_file) *decl_file_cache {
-	f := c.get(p.path)
-	f.update(p.unix)
+func (c *decl_cache) get_and_update(filename string) *decl_file_cache {
+	f := c.get(filename)
+	f.update()
 	return f
 }
