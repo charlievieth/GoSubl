@@ -66,7 +66,7 @@ func Include(ctxt *build.Context, path string) bool {
 	if err != nil {
 		return false
 	}
-	data, err := readImports(f, true, nil)
+	data, err := readImportsFast(f)
 	f.Close()
 	if err != nil {
 		return false
@@ -88,7 +88,7 @@ func IncludeTags(ctxt *build.Context, path string, tags map[string]bool) (bool, 
 	if err != nil {
 		return false, err
 	}
-	data, err := readImportsFast(f, true, nil)
+	data, err := readImportsFast(f)
 	f.Close()
 	if err != nil {
 		return false, err
@@ -111,7 +111,7 @@ func ShortImport(ctxt *build.Context, path string) (string, bool) {
 	if err != nil {
 		return "", false
 	}
-	data, err := readImportsFast(f, true, nil)
+	data, err := readImportsFast(f)
 	f.Close()
 	if err != nil {
 		return "", false
@@ -128,7 +128,7 @@ func ReadPackageName(path string, src interface{}) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	data, err := readImportsFast(rc, true, nil)
+	data, err := readImportsFast(rc)
 	rc.Close()
 	if err != nil {
 		return "", err
@@ -340,7 +340,7 @@ func MatchContext(orig *build.Context, filename string, src interface{}) (*build
 	if err != nil {
 		return nil, err
 	}
-	data, err := readImportsFast(rc, true, nil)
+	data, err := readImportsFast(rc)
 	rc.Close()
 	if err != nil {
 		return nil, err

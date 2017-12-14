@@ -248,7 +248,7 @@ func readImports(f io.Reader, reportSyntaxError bool, imports *[]string) ([]byte
 
 // readImportsFast is like readImports, except that it stops reading after the
 // package clause.
-func readImportsFast(f io.Reader, reportSyntaxError bool, imports *[]string) ([]byte, error) {
+func readImportsFast(f io.Reader) ([]byte, error) {
 	r := importReader{b: bufio.NewReader(f)}
 
 	r.readKeyword("package")
