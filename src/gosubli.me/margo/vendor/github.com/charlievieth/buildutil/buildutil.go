@@ -136,6 +136,20 @@ func ReadPackageName(path string, src interface{}) (string, error) {
 	return readPackageName(data)
 }
 
+func ReadImports(path string, src interface{}) (pkgname string, imports []string, err error) {
+	rc, err := openReader(&build.Default, path, src)
+	if err != nil {
+		return
+	}
+	imports = make([]string, 0, 8)
+	data, err := readImports(rc, true, &imports)
+	if err != nil {
+		return
+	}
+	pkgname, err = readPackageName(data)
+	return
+}
+
 func openReader(ctxt *build.Context, filename string, src interface{}) (io.ReadCloser, error) {
 	if src != nil {
 		switch s := src.(type) {
@@ -636,6 +650,154 @@ func match(ctxt *build.Context, name string, allTags map[string]bool, negated bo
 	}
 
 	return false
+}
+
+func inTestdata(sub string) bool {
+	return strings.Contains(sub, "/testdata/") || strings.HasSuffix(sub, "/testdata") ||
+		strings.HasPrefix(sub, "testdata/") || sub == "testdata"
+}
+
+// return ctxt.Import(".", dir, mode)
+func ImportPath(ctxt *build.Context, dir string) (string, error) {
+	if dir == "" {
+		return "", errors.New("empty source dir")
+	}
+	if !isDir(ctxt, dir) {
+		return ".", errors.New("cannot find package \".\" in:\n\t" + dir)
+	}
+	importPath := "."
+	if !strings.HasPrefix(dir, ctxt.GOROOT) {
+		all := gopath(ctxt)
+		for i, root := range all {
+			rootsrc := joinPath(ctxt, root, "src")
+			if sub, ok := hasSubdirCtxt(ctxt, rootsrc, dir); ok && !inTestdata(sub) {
+				// We found a potential import path for dir,
+				// but check that using it wouldn't find something
+				// else first.
+				if ctxt.GOROOT != "" {
+					if dir := joinPath(ctxt, ctxt.GOROOT, "src", sub); isDir(ctxt, dir) {
+						// go/build records a conflict here
+						goto Found
+					}
+				}
+				for _, earlyRoot := range all[:i] {
+					if dir := joinPath(ctxt, earlyRoot, "src", sub); isDir(ctxt, dir) {
+						// go/build records a conflict here
+						goto Found
+					}
+				}
+				// sub would not name some other directory instead of this one.
+				// Record it.
+				importPath = sub
+				goto Found
+			}
+		}
+	}
+	if ctxt.GOROOT != "" {
+		root := joinPath(ctxt, ctxt.GOROOT, "src")
+		if sub, ok := hasSubdirCtxt(ctxt, root, dir); ok && !inTestdata(sub) {
+			importPath = sub
+			goto Found
+		}
+	}
+
+Found:
+	return importPath, nil
+}
+
+// joinPath calls ctxt.JoinPath (if not nil) or else filepath.Join.
+func joinPath(ctxt *build.Context, elem ...string) string {
+	if f := ctxt.JoinPath; f != nil {
+		return f(elem...)
+	}
+	return filepath.Join(elem...)
+}
+
+// splitPathList calls ctxt.SplitPathList (if not nil) or else filepath.SplitList.
+func splitPathList(ctxt *build.Context, s string) []string {
+	if f := ctxt.SplitPathList; f != nil {
+		return f(s)
+	}
+	return filepath.SplitList(s)
+}
+
+// isDir calls ctxt.IsDir (if not nil) or else uses os.Stat.
+func isDir(ctxt *build.Context, path string) bool {
+	if f := ctxt.IsDir; f != nil {
+		return f(path)
+	}
+	fi, err := os.Stat(path)
+	return err == nil && fi.IsDir()
+}
+
+// hasSubdirCtxt calls ctxt.HasSubdir (if not nil) or else uses
+// the local file system to answer the question.
+func hasSubdirCtxt(ctxt *build.Context, root, dir string) (rel string, ok bool) {
+	if f := ctxt.HasSubdir; f != nil {
+		return f(root, dir)
+	}
+
+	// Try using paths we received.
+	if rel, ok = hasSubdir(root, dir); ok {
+		return
+	}
+
+	// Try expanding symlinks and comparing
+	// expanded against unexpanded and
+	// expanded against expanded.
+	rootSym, _ := filepath.EvalSymlinks(root)
+	dirSym, _ := filepath.EvalSymlinks(dir)
+
+	if rel, ok = hasSubdir(rootSym, dir); ok {
+		return
+	}
+	if rel, ok = hasSubdir(root, dirSym); ok {
+		return
+	}
+	return hasSubdir(rootSym, dirSym)
+}
+
+// hasSubdir reports if dir is within root by performing lexical analysis only.
+func hasSubdir(root, dir string) (rel string, ok bool) {
+	const sep = string(filepath.Separator)
+	if !strings.HasSuffix(root, sep) {
+		root += sep
+	}
+	if !strings.HasPrefix(dir, root) {
+		return "", false
+	}
+	return filepath.ToSlash(dir[len(root):]), true
+}
+
+// gopath returns the list of Go path directories.
+func gopath(ctxt *build.Context) []string {
+	var all []string
+	for _, p := range splitPathList(ctxt, ctxt.GOPATH) {
+		if p == "" || p == ctxt.GOROOT {
+			// Empty paths are uninteresting.
+			// If the path is the GOROOT, ignore it.
+			// People sometimes set GOPATH=$GOROOT.
+			// Do not get confused by this common mistake.
+			continue
+		}
+		if strings.HasPrefix(p, "~") {
+			// Path segments starting with ~ on Unix are almost always
+			// users who have incorrectly quoted ~ while setting GOPATH,
+			// preventing it from expanding to $HOME.
+			// The situation is made more confusing by the fact that
+			// bash allows quoted ~ in $PATH (most shells do not).
+			// Do not get confused by this, and do not try to use the path.
+			// It does not exist, and printing errors about it confuses
+			// those users even more, because they think "sure ~ exists!".
+			// The go command diagnoses this situation and prints a
+			// useful error.
+			// On Windows, ~ is used in short names, such as c:\progra~1
+			// for c:\program files.
+			continue
+		}
+		all = append(all, p)
+	}
+	return all
 }
 
 var knownOSList = sortStrings(strings.Fields(goosList))

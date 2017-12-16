@@ -44,7 +44,10 @@ var (
 )
 
 func init() {
-	cwd, _ := os.Getwd()
+	cwd, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
 	for _, s := range build.Default.SrcDirs() {
 		if strings.HasPrefix(cwd, s) {
 			CurrentImportPath = filepath.ToSlash(strings.TrimLeft(strings.TrimPrefix(cwd, s), string(filepath.Separator)))
@@ -532,6 +535,58 @@ func TestGoodOSArchFile(t *testing.T) {
 	what = "invalid tag"
 	matchFn(runtime.GOOS+".go", map[string]bool{})
 	matchFn(runtime.GOARCH+".go", map[string]bool{})
+}
+
+func TestImportPath(t *testing.T) {
+	var importPathTests = []string{
+		".",
+		"os",
+		"net/http",
+		"text/template/parse",
+		CurrentWorkingDirectory,
+		filepath.Join(CurrentWorkingDirectory, "vendor", "buildutil_vendor_test", "hello"),
+		filepath.Join(CurrentWorkingDirectory, "testdata"),
+		filepath.Join(CurrentWorkingDirectory, "vendor", "does_not_exit"),
+		"package-does-not-exist-123ABC",
+	}
+
+	ctxt := build.Default
+	ctxt.GOPATH = ""
+	for i, dir := range importPathTests {
+		pkg, buildErr := ctxt.ImportDir(dir, build.FindOnly)
+
+		path, err := ImportPath(&ctxt, dir)
+		if err != nil && buildErr == nil {
+			t.Fatalf("%d: failed to import directory %q: %v", i, dir, err)
+		}
+		if buildErr != nil && err == nil {
+			t.Fatalf("%d: expected error for directory %q found %v, want %v", i, dir, err, buildErr)
+		}
+		if err != nil && buildErr != nil && buildErr.Error() != err.Error() {
+			t.Fatalf("%d: error mismatch for directory %q, found %v, want %v", i, dir, err, buildErr)
+		}
+		if path != pkg.ImportPath {
+			t.Fatalf("%d: Import succeeded but found %q, want %q", i, path, pkg.ImportPath)
+		}
+	}
+}
+
+func BenchmarkImportPath(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, err := ImportPath(&build.Default, CurrentWorkingDirectory)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkImportPath_Base(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, err := build.ImportDir(CurrentWorkingDirectory, build.FindOnly)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
 }
 
 func shortImportFiles(b *testing.B) []string {
