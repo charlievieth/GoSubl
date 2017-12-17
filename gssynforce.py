@@ -9,8 +9,8 @@ def _stx(v):
         'GoSublime-next.tmLanguage',
     ]
 
-    fn = 'Packages/GoSubl/syntax/GoSublime-Go.tmLanguage'
-    if not os.path.exists(gs.dist_path('syntax/GoSublime-Go.tmLanguage')):
+    fn = 'Packages/GoSubl/syntax/GoSublime-Go.YAML-tmLanguage'
+    if not os.path.exists(gs.dist_path('syntax/GoSublime-Go.YAML-tmLanguage')):
         return
 
     stx = v.settings().get('syntax')

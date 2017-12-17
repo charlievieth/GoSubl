@@ -1,0 +1,69 @@
+# [PackageDev] target_format: plist, ext: tmLanguage
+name: 'GoSublime: Template'
+scopeName: source.gotemplate
+uuid: 43606de8-c638-11e2-b661-6711676f99ca
+
+patterns:
+- begin: \{\{
+  beginCaptures:
+    '0': {name: punctuation.section.embedded.begin.gotemplate}
+  end: \}\}
+  endCaptures:
+    '0': {name: punctuation.section.embedded.end.gotemplate}
+  patterns:
+  - name: keyword.operator.initialize.gotemplate
+    match: :=
+  - name: keyword.operator.pipe.gotemplate
+    match: \|
+  - name: variable.other.gotemplate
+    match: '[.$][\w]*'
+  - name: keyword.control.gotemplate
+    match: \b(if|else|range|template|with|end|nil|with|define)\b
+  - name: support.function.builtin.gotemplate
+    match: \b(and|call|html|index|js|len|not|or|print|printf|println|urlquery|eq|ne|lt|le|gt|ge)\b
+  - name: comment.block.gotemplate
+    begin: /\*
+    end: \*/
+  - name: string.quoted.double.gotemplate
+    begin: '"'
+    beginCaptures:
+      '0': {name: punctuation.definition.string.begin.gotemplate}
+    end: '"'
+    endCaptures:
+      '0': {name: punctuation.definition.string.end.gotemplate}
+    patterns:
+    - include: '#string_placeholder'
+    - include: '#string_escaped_char'
+  - name: string.quoted.raw.gotemplate
+    begin: '`'
+    beginCaptures:
+      '0': {name: punctuation.definition.string.begin.gotemplate}
+    end: '`'
+    endCaptures:
+      '0': {name: punctuation.definition.string.end.gotemplate}
+    patterns:
+    - include: '#string_placeholder'
+
+repository:
+  string_escaped_char:
+    patterns:
+    - name: constant.character.escape.gotemplate
+      match: \\(\\|[abfnrtv'"]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8}|[0-7]{3})
+    - name: invalid.illegal.unknown-escape.gotemplate
+      match: \\.
+
+  string_placeholder:
+    patterns:
+    - name: constant.other.placeholder.gotemplate
+      match: |-
+        (?x)%
+            [#0\- +']*                                  # flags
+            (\[\d+\])?                                  # field (argument #)
+            [,;:_]?                                     # separator character (AltiVec)
+            ((-?\d+)|(\[\d+\])?\*)?                     # minimum field width
+            (\.((-?\d+)|(\[\d+\])?\*)?)?                # precision
+            [diouxXDOUeEfFgGaAcCsSpqnvtTbyYhHmMzZ%]     # conversion type
+    - name: invalid.illegal.placeholder.gotemplate
+      match: '%'
+foldingStartMarker: \{\{\s*(?:if|with|range)\b
+foldingStopMarker: \{\{\s*(?:else|end)\b

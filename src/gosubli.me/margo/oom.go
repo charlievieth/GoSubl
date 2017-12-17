@@ -8,12 +8,8 @@ import (
 
 func startOomKiller(maxMb int) {
 	go func() {
-		const M = uint64(1024 * 1024)
-		runtime.LockOSThread()
-
-		var mst runtime.MemStats
-		buf := make([]byte, 1*M)
-		f := "MarGo: OOM.\n" +
+		const MB = 1024 * 1024
+		const format = "MarGo: OOM.\n" +
 			"Memory limit: %vm\n" +
 			"Memory usage: %vm\n" +
 			"Number goroutines: %v\n" +
@@ -21,14 +17,17 @@ func startOomKiller(maxMb int) {
 			"\n%s\n\n" +
 			"-------  end stack trace  ----\n"
 
-		for {
+		var mst runtime.MemStats
+		tick := time.NewTicker(time.Second * 2)
+
+		for range tick.C {
 			runtime.ReadMemStats(&mst)
-			alloc := int(mst.Sys / M)
+			alloc := int(mst.Sys / MB)
 			if alloc >= maxMb {
+				buf := make([]byte, 1*MB)
 				n := runtime.Stack(buf, true)
-				log.Fatalf(f, maxMb, alloc, runtime.NumGoroutine(), buf[:n])
+				log.Fatalf(format, maxMb, alloc, runtime.NumGoroutine(), buf[:n])
 			}
-			time.Sleep(time.Second * 2)
 		}
 	}()
 }

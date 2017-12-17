@@ -1,0 +1,149 @@
+# [PackageDev] target_format: plist, ext: tmLanguage
+comment: Based on work from github.com/frou/GoFeather and github.com/DisposaBoy/GoSublime
+name: 'GoSublime: Go'
+scopeName: source.go
+fileTypes: [go]
+uuid: 1caaa75c-b61d-11e2-ba93-138feb5db969
+
+patterns:
+- name: comment.block.go
+  begin: /\*
+  end: \*/
+
+- name: comment.line.double-slash.go
+  begin: //
+  end: \z
+
+- name: string.quoted.double.go
+  begin: '"'
+  beginCaptures:
+    '0': {name: punctuation.definition.string.begin.go}
+  end: '"'
+  endCaptures:
+    '0': {name: punctuation.definition.string.end.go}
+  patterns:
+  - include: '#string_placeholder'
+  - include: '#string_escaped_char'
+
+- name: string.quoted.raw.go
+  begin: '`'
+  beginCaptures:
+    '0': {name: punctuation.definition.string.begin.go}
+  end: '`'
+  endCaptures:
+    '0': {name: punctuation.definition.string.end.go}
+  patterns:
+  - include: '#string_placeholder'
+  - include: source.gotemplate
+
+- name: constant.language.go
+  match: \b(true|false|nil|iota)\b
+
+- name: constant.numeric.floating-point.go
+  match: \b((\d+\.(\d+)?([eE][+-]?\d+)?|\d+[eE][+-]?\d+|\.\d+([eE][+-]?\d+)?)i?)\b
+
+- name: constant.numeric.integer.go
+  match: \b(\d+i|0[xX][0-9A-Fa-f]+|0[0-7]*|[1-9][0-9]*)\b
+
+- name: constant.other.rune.go
+  match: '''(?:[^''\\]|\\(?:\\|[abfnrtv'']|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8}|[0-7]{3}))'''
+
+- name: storage.type.go
+  match: '\b(int(16|8|32|64)?|uint(16|8|32|ptr|64)?|float(32|64)?|b(yte|ool)|error|string|rune|complex(64|128))\b'
+
+- comment: A subset of keyword.other.go for flow control keywords.
+  name: keyword.control.go
+  match: \b(s(elect|witch)|c(ontinue|ase)|i(f|mport)|def(er|ault)|package|else|f(or|allthrough)|r(eturn|ange)|go(to)?|break)\b
+  # match: \b(break|case|continue|default|defer|else|for|go|goto|if|range|return|select|switch)\b
+
+- name: keyword.other.go
+  match: '\b(break|case|chan|const|continue|default|defer|else|fallthrough|for|func|go|goto|if|import|interface|map|package|range|return|select|struct|switch|type|var)\b'
+
+- name: keyword.other.go
+  match: '\b(ComplexType|FloatType|IntegerType|Type|Type1)\b'
+
+- comment: This matches the 'x := 0' style of variable declaration.
+  name: meta.initialization.short.go
+  match: (?:[[:alpha:]_][[:alnum:]_]*)(?:,\s+[[:alpha:]_][[:alnum:]_]*)*\s*(:=)
+  captures:
+    '0': {name: variable.other.go}
+    '1': {name: keyword.operator.initialize.go}
+
+- name: entity.name.function.go
+  match: '\b(func)\s+(\b[[:alpha:]_][[:alnum:]_]*\b)'
+
+# - name: entity.name.function.go
+#   match: (?<=(\Afunc|...\))\s)\b(\w+)\b(?=\()
+#
+# - name: entity.name.function.go
+#   match: (?<=(\sfunc|....\))\s)\b(\w+)\b(?=\()
+
+- name: entity.name.type.go
+  match: (?<=\Atype\s)\b(\w+)\b
+
+- name: entity.name.type.go
+  match: (?<=\stype\s)\b(\w+)\b
+
+- name: support.function.builtin.go
+  match: \b(append|cap|close|complex|copy|delete|imag|len|make|new|panic|print|println|real|recover)\b
+
+- name: support.function.go
+  match: '(\.)(\b[[:alpha:]_][[:alnum:]_]*\b)\s*(\()'
+
+- name: keyword.operator.channel.go
+  match: (<-)
+
+- name: keyword.operator.comparison.go
+  match: (==|!=|<|<=|>|>=)
+
+- name: keyword.operator.logical.go
+  match: (&&|[|]{2}|!)
+
+- name: keyword.operator.increment.go
+  match: ([+]{2})
+
+- name: keyword.decrement.go
+  match: (--)
+
+- name: keyword.operator.assignment.go
+  match: (=|(?:[+]|-|[|]|^|[*]|/|%|<<|>>|&|&^)=)
+
+- name: keyword.operator.arithmetic.go
+  match: ([+]|-|[*]|/|%|&|[|]|^|&^|<<|>>)
+
+- name: keyword.operator.semi-colon.go
+  match: (;)
+
+- name: punctuation.definition.comma.go
+  match: (,)
+
+- name: punctuation.definition.dot.go
+  match: ([.])
+
+- name: punctuation.definition.colon.go
+  match: (:)
+
+- name: punctuation.definition.bracket.go
+  match: (\[|\]|{|}|\(|\))
+
+repository:
+  string_escaped_char:
+    patterns:
+    - name: constant.character.escape.go
+      match: \\(\\|[abfnrtv'"]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8}|[0-7]{3})
+    - name: invalid.illegal.unknown-escape.go
+      match: \\.
+
+  string_placeholder:
+    patterns:
+    - name: constant.other.placeholder.go
+      match: |-
+        (?x)%
+            [#0\- +']*                                  # flags
+            (\[\d+\])?                                  # field (argument #)
+            [,;:_]?                                     # separator character (AltiVec)
+            ((-?\d+)|(\[\d+\])?\*)?                     # minimum field width
+            (\.((-?\d+)|(\[\d+\])?\*)?)?                # precision
+            [diouxXDOUeEfFgGaAcCsSpqnvtTbyYhHmMzZ%]     # conversion type
+firstLineMatch: "-[*]-( Mode:)? Go -[*]-"
+keyEquivalent: ^~G
