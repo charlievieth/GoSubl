@@ -1,0 +1,417 @@
+%YAML 1.2
+---
+# http://www.sublimetext.com/docs/3/syntax.html
+name: "GoSublime: Go"
+comment: Based on work from github.com/frou/GoFeather and github.com/DisposaBoy/GoSublime
+file_extensions:
+  - go
+first_line_match: "-[*]-( Mode:)? Go -[*]-"
+scope: source.go
+variables:
+  identifier: '\b[[:alpha:]_][[:alnum:]_]*\b'
+  type_chars: '[[:alnum:]\s,._*&<>\[\]-]'
+
+contexts:
+  main:
+    - include: functions
+    - include: comments
+    - include: strings
+    # - include: functions
+    - include: initializers
+    - include: keywords
+    - include: late-keywords
+
+    # WARN
+    # - match: \b(true|false|nil|iota)\b
+    #   scope: constant.language.go
+    # - match: '\b((\d+\.(\d+)?([eE][+-]?\d+)?|\d+[eE][+-]?\d+|\.\d+([eE][+-]?\d+)?)i?)\b'
+    #   scope: constant.numeric.floating-point.go
+    # - match: '\b(\d+i|0[xX][0-9A-Fa-f]+|0[0-7]*|[1-9][0-9]*)\b'
+    #   scope: constant.numeric.integer.go
+
+    - include: char
+    # - match: '''(?:[^''\\]|\\(?:\\|[abfnrtv'']|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8}|[0-7]{3}))'''
+    #   scope: constant.other.rune.go
+
+    - include: basic-types
+    # - match: \b(int(16|8|32|64)?|uint(16|8|32|ptr|64)?|float(32|64)?|b(yte|ool)|error|string|rune|complex(64|128))\b
+    #   scope: storage.type.go
+
+    # WARN
+    # - match: \b(break|c(ase|ontinue)|def(ault|er)|else|for|go(to)?|if|r(ange|eturn)|s(elect|witch))\b
+    #   comment: A subset of keyword.other.go for flow control keywords.
+    #   scope: keyword.control.go
+    # - match: \b(break|c(ase|han|onst|ontinue)|def(ault|er)|else|f(allthrough|or|unc)|go(to)?|i(f|mport|nterface)|map|package|r(ange|eturn)|s(elect|truct|witch)|type|var)\b
+    #   scope: keyword.other.go
+
+      # TODO: Use 'identifier' variable
+    - match: '(?:[[:alpha:]_][[:alnum:]_]*)(?:,\s+[[:alpha:]_][[:alnum:]_]*)*\s*(:=)'
+      comment: This matches the 'x := 0' style of variable declaration.
+      scope: meta.initialization.short.go
+      captures:
+        0: variable.other.go # WARN: This looks wrong '0' matches everything
+        1: keyword.operator.initialize.go
+
+    # - match: '(?<=\Atype\s)\b(\w+)\b'
+    #   scope: entity.name.type.go
+    # - match: '(?<=\stype\s)\b(\w+)\b'
+    #   scope: entity.name.type.go
+
+    - include: builtins
+    # - match: \b(append|c(ap|lose|omplex|opy)|delete|imag|len|make|new|p(anic|rintln|rint)|r(eal|ecover))\b
+    #   scope: support.function.builtin.go
+
+    - match: '{{identifier}}(?=\()'
+      scope: support.function.go
+
+    - include: operators
+
+    - include: punctuation
+    # - match: ','
+    #   scope: punctuation.definition.comma.go
+    # - match: '\.'
+    #   scope: punctuation.definition.dot.go
+    # - match: ':'
+    #   scope: punctuation.definition.colon.go
+    # - match: '[\[\]\(\)\{\}]'
+    #   scope: punctuation.definition.bracket.go
+
+  punctuation:
+    - match: ','
+      scope: punctuation.definition.comma.go
+    - match: '\.'
+      scope: punctuation.definition.dot.go
+    - match: ':'
+      scope: punctuation.definition.colon.go
+    - match: '[\[\]\(\)\{\}]'
+      scope: punctuation.definition.bracket.go
+
+  builtins:
+    - match: \b(append|c(ap|lose|omplex|opy)|delete|imag|len|make|new|p(anic|rintln|rint)|r(eal|ecover))\b
+      scope: support.function.builtin.go
+
+  basic-types:
+    - match: '\b(int(16|8|32|64)?|uint(16|8|32|ptr|64)?|float(32|64)?|b(yte|ool)|error|string|rune|complex(64|128))\b'
+      scope: storage.type.go
+    - match: '\b(ComplexType|FloatType|IntegerType|Type|Type1)\b'
+      scope: storage.type.go
+
+  case-default:
+    - match: '\b(default|case)\b'
+      scope: keyword.control.go
+    - match: (,|:)
+      scope: punctuation.separator.go
+
+  expressions:
+    - include: expressions-early
+    - include: expressions-late
+
+  expressions-early:
+    - include: case-default
+    - include: keywords
+
+  expressions-late:
+    - include: comments
+    - include: strings
+    - include: char
+    - include: basic-types
+    - include: late-keywords
+    - include: operators
+    - include: builtins
+
+  keywords:
+    - match: \b(s(elect|witch)|c(ontinue|ase)|i(f|mport)|def(er|ault)|package|else|f(or|allthrough)|r(eturn|ange)|go(to)?|break)\b
+      scope: keyword.control.go
+    - match: \b(true|false|nil|iota)\b
+      scope: constant.language.go
+    - match: '\b((0(x|X)\h*)|(([0-9]+\.?[0-9]*)|(\.[0-9]+))((e|E)(\+|-)?[0-9]+)?)\b'
+      scope: constant.numeric.go
+
+  late-keywords:
+    - match: \b(chan|func|var|type|map|struct)\b
+      scope: storage.type.go
+      comment: includes 'struct'
+    - match: \bconst\b
+      scope: storage.modifier.go
+
+  operators:
+    - match: '\|\|'
+      scope: keyword.operator.go
+    - match: '&[&^]'
+      scope: keyword.operator.go
+    - match: ':='
+      scope: keyword.operator.initialize.go
+    - match: '[=!<>]='
+      scope: keyword.operator.go
+    - match: <<|>>
+      scope: keyword.operator.go
+    - match: <-|->
+      scope: keyword.operator.channel.go
+    - match: '='
+      scope: keyword.operator.assignment.go
+    - match: '[-/*&<>+|^%!;]'
+      scope: keyword.operator.go
+      comment: includes semi-colon
+
+  comments:
+    - match: ^/\* =(\s*.*?)\s*= \*/$\n?
+      scope: comment.block.go
+      captures:
+        1: meta.toc-list.banner.block.go
+    - match: /\*
+      scope: punctuation.definition.comment.go
+      push:
+        - meta_scope: comment.block.go
+        - match: \*/
+          scope: punctuation.definition.comment.go
+          pop: true
+    - match: \*/
+      scope: invalid.illegal.stray-comment-end.go
+    - match: ^// =(\s*.*?)\s*=\s*$\n?
+      scope: comment.line.double-slash.banner.go
+      captures:
+        1: meta.toc-list.banner.line.go
+    - match: //
+      scope: punctuation.definition.comment.go
+      push:
+        - meta_scope: comment.line.double-slash.go
+        - match: \n
+          pop: true
+
+  struct-initializer:
+    - match: '\s+({{identifier}})\s+(struct)\b'
+      captures:
+        1: entity.name.type.go
+        2: storage.type.go
+      push:
+        - meta_scope: meta.struct.go
+        - match: \}
+          scope: meta.block.go punctuation.definition.block.end.go
+          pop: true
+        - match: \{
+          scope: punctuation.definition.block.begin.go
+          push:
+            - meta_scope: meta.block.go
+            - match: '(?=\})'
+              pop: true
+            - match: (?:(,)|^)\s*(\*)?(?:{{identifier}}\.)*({{identifier}})\s*(?=$|"|`)
+              captures:
+                1: punctuation.separator.go
+                2: keyword.operator.go
+                3: support.other.go # no syntax highlighting
+            - match: (?:(,)|^)\s*({{identifier}})
+              captures:
+                1: punctuation.separator.go
+                2: support.other.go # no syntax highlighting
+            - include: expressions
+
+  initializers:
+    # Match multiple variable declarations inside of parens
+    - match: '^\b(var)\s+(\()'
+      captures:
+        1: storage.type.go
+        2: meta.group.go punctuation.definition.group.begin.go
+      push:
+        - meta_scope: meta.initialization.multiple.go
+        - meta_content_scope: meta.group.go
+        - match: \)
+          scope: meta.group.go punctuation.definition.group.end.go
+          pop: true
+        - match: '^\s*({{identifier}})(?![:,}])'
+          captures:
+            1: entity.name.type.go
+          push:
+            - match: '\s*(,)\s*({{identifier}})'
+              captures:
+                1: punctuation.separator.go
+                2: entity.name.type.go
+            - match: ''
+              pop: true
+        - include: expressions
+    - match: '^\b(var)(?:\s+({{identifier}}))?'
+      captures:
+        1: storage.type.go
+        2: entity.name.type.go
+    # Match multiple constant declarations inside of parens
+    - match: '^\b(const)\s+(\()'
+      captures:
+        1: storage.type.go
+        2: meta.group.go punctuation.definition.group.begin.go
+      push:
+        - meta_content_scope: meta.group.go
+        - match: \)
+          scope: meta.group.go punctuation.definition.group.end.go
+          pop: true
+        - match: '^\s*({{identifier}})'
+          captures:
+            1: entity.name.type.go # previously used 'constant'
+          push:
+            - match: '\s*(,)\s*({{identifier}})'
+              captures:
+                1: punctuation.separator.go
+                2: entity.name.type.go # previously used 'constant'
+            - match: ''
+              pop: true
+        - include: expressions
+    - match: '^\b(const)(?:\s+({{identifier}}))?'
+      captures:
+        1: storage.type.go
+        2: entity.name.type.go # previously used 'constant'
+
+    - match: '^\b(type)\s+({{identifier}})\s+(struct)\b'
+      captures:
+        1: storage.type.go
+        2: entity.name.type.go
+        3: storage.type.go
+      push:
+        - meta_scope: meta.struct.go
+        - match: \}
+          scope: meta.block.go punctuation.definition.block.end.go
+          pop: true
+        - match: \{
+          scope: punctuation.definition.block.begin.go
+          push:
+            - meta_scope: meta.block.go
+            - match: '(?=\})'
+              pop: true
+            - match: (?:(,)|^)\s*(\*)?(?:{{identifier}}\.)*({{identifier}})\s*(?=$|"|`)
+              captures:
+                1: punctuation.separator.go
+                2: keyword.operator.go
+                3: support.other.go
+            - match: (?:(,)|^)\s*({{identifier}})
+              captures:
+                1: punctuation.separator.go
+                2: support.other.go
+            - include: expressions
+
+    - match: '^\b(type)\s+(\()'
+      captures:
+        1: storage.type.go
+        2: meta.group.go punctuation.definition.group.begin.go
+      push:
+        - meta_content_scope: meta.group.go
+        - match: \)
+          scope: meta.group.go punctuation.definition.group.end.go
+          pop: true
+        - include: struct-initializer
+        - match: '^\s*({{identifier}})'
+          captures:
+            1: entity.name.type.go
+          push:
+            - match: '\s*(,)\s*({{identifier}})'
+              captures:
+                1: punctuation.separator.go
+                2: entity.name.type.go
+            - match: ''
+              pop: true
+        - include: expressions
+
+    - match: '^\b(type)(?:\s+({{identifier}}))?'
+      captures:
+        1: storage.type.go
+        2: entity.name.type.go
+
+  string-escaped-char:
+    - match: '\\(\\|[abfnrutv''"]|x\h{2}|u\h{4}|U\h{8}|[0-7]{3})'
+      scope: constant.character.escape.go
+    - match: \\.
+      scope: invalid.illegal.unknown-escape.go
+
+  string-placeholder:
+    - match: |-
+        (?x)%
+            [#0\- +']*                                  # flags
+            (\[\d+\])?                                  # field (argument #)
+            [,;:_]?                                     # separator character (AltiVec)
+            ((-?\d+)|(\[\d+\])?\*)?                     # minimum field width
+            (\.((-?\d+)|(\[\d+\])?\*)?)?                # precision
+            [diouxXDOUeEfFgGaAcCsSpqnvtTbyYhHmMzZ%]     # conversion type
+      scope: constant.other.placeholder.go
+    - match: "%"
+      scope: invalid.illegal.placeholder.go
+
+  strings:
+    - match: '"'
+      scope: punctuation.definition.string.begin.go
+      push:
+        - meta_scope: string.quoted.double.go
+        - match: '"'
+          scope: punctuation.definition.string.end.go
+          pop: true
+        - include: string-placeholder
+        - include: string-escaped-char
+    - match: "`"
+      scope: punctuation.definition.string.begin.go
+      push:
+        - meta_scope: string.quoted.raw.go
+        - match: "`"
+          scope: punctuation.definition.string.end.go
+          pop: true
+        - include: string-placeholder
+        - include: scope:source.gotemplate
+
+  char:
+    - match: "'"
+      scope: punctuation.definition.string.begin.go
+      push:
+        - match: "'"
+          scope: punctuation.definition.string.end.go
+          pop: true
+        - include: string-escaped-char
+
+  functions:
+    - include: reciever-function-begin
+    - include: plain-function-begin
+    - match: '\b(func)\s+({{identifier}})'
+      captures:
+        1: storage.type.go
+        2: entity.name.function.go
+
+  plain-function-begin:
+    - match: |-
+        (?x)
+        (func)
+        \s*
+        # name of function
+        ( {{identifier}} )
+        (?=\s*\()
+      comment: |
+        The meta scope appears to use the long definition locally and
+        the short one when searching globally.
+      scope: meta.function.declaration.go
+      captures:
+        1: storage.type.go
+        2: entity.name.function.go
+
+  reciever-function-begin:
+    - match: |-
+        (?x)
+        (func)
+        \s*
+        # receiver declaration: (Type), (*Type), (t Type), (t *Type)
+        (
+          (\()
+            (?:\s*({{identifier}})\s+)?
+            (\*?)
+            \s*
+            {{identifier}}
+            \s*
+          (\))
+        )
+        \s*
+        # name of function
+        ( {{identifier}} )
+        (?=\s*\()
+      comment: |
+        The meta scope appears to use the long definition locally and
+        the short one when searching globally.
+      scope: meta.function.declaration.go
+      captures:
+        1: storage.type.go
+        2: meta.group.go
+        3: punctuation.definition.group.begin.go
+        4: variable.parameter.receiver.go
+        5: keyword.operator.go
+        6: punctuation.definition.group.end.go
+        7: entity.name.function.go
