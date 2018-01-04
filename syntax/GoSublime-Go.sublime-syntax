@@ -9,97 +9,56 @@ first_line_match: "-[*]-( Mode:)? Go -[*]-"
 scope: source.go
 variables:
   identifier: '\b[[:alpha:]_][[:alnum:]_]*\b'
-  type_chars: '[[:alnum:]\s,._*&<>\[\]-]'
 
 contexts:
   main:
     - include: functions
     - include: comments
     - include: strings
-    # - include: functions
     - include: initializers
     - include: keywords
     - include: late-keywords
-
-    # WARN
-    # - match: \b(true|false|nil|iota)\b
-    #   scope: constant.language.go
-    # - match: '\b((\d+\.(\d+)?([eE][+-]?\d+)?|\d+[eE][+-]?\d+|\.\d+([eE][+-]?\d+)?)i?)\b'
-    #   scope: constant.numeric.floating-point.go
-    # - match: '\b(\d+i|0[xX][0-9A-Fa-f]+|0[0-7]*|[1-9][0-9]*)\b'
-    #   scope: constant.numeric.integer.go
-
     - include: char
-    # - match: '''(?:[^''\\]|\\(?:\\|[abfnrtv'']|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8}|[0-7]{3}))'''
-    #   scope: constant.other.rune.go
-
     - include: basic-types
-    # - match: \b(int(16|8|32|64)?|uint(16|8|32|ptr|64)?|float(32|64)?|b(yte|ool)|error|string|rune|complex(64|128))\b
-    #   scope: storage.type.go
 
-    # WARN
-    # - match: \b(break|c(ase|ontinue)|def(ault|er)|else|for|go(to)?|if|r(ange|eturn)|s(elect|witch))\b
-    #   comment: A subset of keyword.other.go for flow control keywords.
-    #   scope: keyword.control.go
-    # - match: \b(break|c(ase|han|onst|ontinue)|def(ault|er)|else|f(allthrough|or|unc)|go(to)?|i(f|mport|nterface)|map|package|r(ange|eturn)|s(elect|truct|witch)|type|var)\b
-    #   scope: keyword.other.go
-
-      # TODO: Use 'identifier' variable
-    - match: '(?:[[:alpha:]_][[:alnum:]_]*)(?:,\s+[[:alpha:]_][[:alnum:]_]*)*\s*(:=)'
+    - match: '(?:{{identifier}})(?:\s*,\s*{{identifier}})*\s*(:=)'
       comment: This matches the 'x := 0' style of variable declaration.
       scope: meta.initialization.short.go
       captures:
         0: variable.other.go # WARN: This looks wrong '0' matches everything
         1: keyword.operator.initialize.go
 
-    # - match: '(?<=\Atype\s)\b(\w+)\b'
-    #   scope: entity.name.type.go
-    # - match: '(?<=\stype\s)\b(\w+)\b'
-    #   scope: entity.name.type.go
-
     - include: builtins
-    # - match: \b(append|c(ap|lose|omplex|opy)|delete|imag|len|make|new|p(anic|rintln|rint)|r(eal|ecover))\b
-    #   scope: support.function.builtin.go
 
-    - match: '{{identifier}}(?=\()'
-      scope: support.function.go
+    # The 'expressions' group also has this but we still need it here
+    - include: function-call
 
     - include: operators
-
     - include: punctuation
-    # - match: ','
-    #   scope: punctuation.definition.comma.go
-    # - match: '\.'
-    #   scope: punctuation.definition.dot.go
-    # - match: ':'
-    #   scope: punctuation.definition.colon.go
-    # - match: '[\[\]\(\)\{\}]'
-    #   scope: punctuation.definition.bracket.go
 
   punctuation:
-    - match: ','
-      scope: punctuation.definition.comma.go
     - match: '\.'
-      scope: punctuation.definition.dot.go
-    - match: ':'
-      scope: punctuation.definition.colon.go
+      scope: punctuation.accessor.dot.go
+    - match: '[,:]'
+      scope: punctuation.separator.go
     - match: '[\[\]\(\)\{\}]'
-      scope: punctuation.definition.bracket.go
+      scope: punctuation.section.brackets.go
 
   builtins:
     - match: \b(append|c(ap|lose|omplex|opy)|delete|imag|len|make|new|p(anic|rintln|rint)|r(eal|ecover))\b
       scope: support.function.builtin.go
 
   basic-types:
-    - match: '\b(int(16|8|32|64)?|uint(16|8|32|ptr|64)?|float(32|64)?|b(yte|ool)|error|string|rune|complex(64|128))\b'
+    # includes struct and interface
+    - match: '\b(int(16|8|32|64)?|uint(16|8|32|ptr|64)?|float(32|64)?|b(yte|ool)|error|str(ing|uct)|interface|rune|complex(64|128))\b'
       scope: storage.type.go
     - match: '\b(ComplexType|FloatType|IntegerType|Type|Type1)\b'
       scope: storage.type.go
 
   case-default:
-    - match: '\b(default|case)\b'
+    - match: '\b(case|default)\b'
       scope: keyword.control.go
-    - match: (,|:)
+    - match: '[,:]'
       scope: punctuation.separator.go
 
   expressions:
@@ -118,14 +77,21 @@ contexts:
     - include: late-keywords
     - include: operators
     - include: builtins
+    - include: function-call
 
   keywords:
     - match: \b(s(elect|witch)|c(ontinue|ase)|i(f|mport)|def(er|ault)|package|else|f(or|allthrough)|r(eturn|ange)|go(to)?|break)\b
       scope: keyword.control.go
     - match: \b(true|false|nil|iota)\b
       scope: constant.language.go
-    - match: '\b((0(x|X)\h*)|(([0-9]+\.?[0-9]*)|(\.[0-9]+))((e|E)(\+|-)?[0-9]+)?)\b'
-      scope: constant.numeric.go
+    - match: '\b(0[xX])\h*\b'
+      scope: constant.numeric.integer.hexadecimal.go
+      captures:
+        1: punctuation.definition.numeric.hexadecimal.go
+    - match: '\b([0-9]+\.[0-9]*|\.[0-9]+)([eE][+-]?\d+)?\b'
+      scope: constant.numeric.float.decimal.go
+    - match: '\b\d+\b'
+      scope: constant.numeric.integer.decimal.go
 
   late-keywords:
     - match: \b(chan|func|var|type|map|struct)\b
@@ -178,7 +144,7 @@ contexts:
         - match: \n
           pop: true
 
-  struct-initializer:
+  initializer-struct:
     - match: '\s+({{identifier}})\s+(struct)\b'
       captures:
         1: entity.name.type.go
@@ -205,26 +171,25 @@ contexts:
                 2: support.other.go # no syntax highlighting
             - include: expressions
 
+  # TODO: This should probably be named 'global-initializers'
   initializers:
-    # Match multiple variable declarations inside of parens
+    # Index global variables
     - match: '^\b(var)\s+(\()'
       captures:
         1: storage.type.go
-        2: meta.group.go punctuation.definition.group.begin.go
+        2: punctuation.definition.bracket.go
       push:
-        - meta_scope: meta.initialization.multiple.go
-        - meta_content_scope: meta.group.go
         - match: \)
-          scope: meta.group.go punctuation.definition.group.end.go
+          scope: punctuation.definition.bracket.go
           pop: true
-        - match: '^\s*({{identifier}})(?![:,}])'
+        - match: '^\s*({{identifier}})(?![:,}(])'
           captures:
-            1: entity.name.type.go
+            1: entity.name.type.go # Enable indexing
           push:
             - match: '\s*(,)\s*({{identifier}})'
               captures:
                 1: punctuation.separator.go
-                2: entity.name.type.go
+                2: entity.name.type.go # Enable indexing
             - match: ''
               pop: true
         - include: expressions
@@ -236,27 +201,26 @@ contexts:
     - match: '^\b(const)\s+(\()'
       captures:
         1: storage.type.go
-        2: meta.group.go punctuation.definition.group.begin.go
+        2: punctuation.definition.bracket.go
       push:
-        - meta_content_scope: meta.group.go
         - match: \)
-          scope: meta.group.go punctuation.definition.group.end.go
+          scope: punctuation.definition.bracket.go
           pop: true
         - match: '^\s*({{identifier}})'
           captures:
-            1: entity.name.type.go # previously used 'constant'
+            1: entity.name.constant.go
           push:
             - match: '\s*(,)\s*({{identifier}})'
               captures:
                 1: punctuation.separator.go
-                2: entity.name.type.go # previously used 'constant'
+                2: entity.name.constant.go
             - match: ''
               pop: true
         - include: expressions
     - match: '^\b(const)(?:\s+({{identifier}}))?'
       captures:
         1: storage.type.go
-        2: entity.name.type.go # previously used 'constant'
+        2: entity.name.constant.go
 
     - match: '^\b(type)\s+({{identifier}})\s+(struct)\b'
       captures:
@@ -294,7 +258,7 @@ contexts:
         - match: \)
           scope: meta.group.go punctuation.definition.group.end.go
           pop: true
-        - include: struct-initializer
+        - include: initializer-struct
         - match: '^\s*({{identifier}})'
           captures:
             1: entity.name.type.go
@@ -359,6 +323,11 @@ contexts:
           scope: punctuation.definition.string.end.go
           pop: true
         - include: string-escaped-char
+
+  # Highlight function calls: foo() and x.bar()
+  function-call:
+    - match: '{{identifier}}(?=\()'
+      scope: support.function.go
 
   functions:
     - include: reciever-function-begin
