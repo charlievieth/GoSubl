@@ -90,13 +90,8 @@ class GoSublime(sublime_plugin.EventListener):
             return ([], AC_OPTS)
 
         types = []
-        for r in view.find_by_selector('source.go keyword.'):
-            if view.substr(r) == 'type':
-                end = r.end()
-                r = view.find(r'\s+(\w+)', end)
-                if r.begin() == end:
-                    types.append(view.substr(r).lstrip())
-
+        for r in view.find_by_selector('source.go entity.name.type.go'):
+            types.append(view.substr(r).lstrip())
 
         try:
             if basename(view.file_name()) == "main.go":
