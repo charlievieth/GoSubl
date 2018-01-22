@@ -5,4 +5,4 @@ github.com/charlievieth/gotype:b51a37a
 github.com/charlievieth/pkgs/...:b296781
 github.com/charlievieth/buildutil:66422ca
 github.com/charlievieth/goimporter/...:aece5f1
-golang.org/x/tools/...:64890f4e
+golang.org/x/tools/...:99037e37
