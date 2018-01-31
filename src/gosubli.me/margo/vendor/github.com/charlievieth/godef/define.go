@@ -164,10 +164,8 @@ func (c *Config) Define(filename string, cursor int, src interface{}) (*Position
 	if err != nil {
 		return nil, nil, err
 	}
-	modified := map[string][]byte{
-		filename: body,
-	}
-	ctxt := useModifiedFiles(&c.Context, modified)
+
+	ctxt := useModifiedFile(&c.Context, filename, body)
 	ctxt = updateContextForFile(ctxt, filename, body)
 
 	name, fake, replaceRoot := updateFilename(ctxt, filename)

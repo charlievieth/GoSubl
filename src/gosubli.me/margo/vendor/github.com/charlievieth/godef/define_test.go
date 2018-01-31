@@ -180,6 +180,7 @@ func BenchmarkDefine_PackageDecl(b *testing.B) {
 }
 
 func BenchmarkDefine_ImportedDecl(b *testing.B) {
+	// line 239:	if e := syscall.Fch#
 	const filename = "testdata/os/file.go"
 	const cursor = 6963
 	src, err := ioutil.ReadFile(filename)
