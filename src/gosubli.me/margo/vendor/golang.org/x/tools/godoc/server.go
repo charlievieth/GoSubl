@@ -88,6 +88,14 @@ func (h *handlerServer) GetPageInfo(abspath, relpath string, mode PageInfoMode, 
 		return ioutil.NopCloser(bytes.NewReader(data)), nil
 	}
 
+	// Make the syscall/js package always visible by default.
+	// It defaults to the host's GOOS/GOARCH, and golang.org's
+	// linux/amd64 means the wasm syscall/js package was blank.
+	// And you can't run godoc on js/wasm anyway, so host defaults
+	// don't make sense here.
+	if goos == "" && goarch == "" && relpath == "syscall/js" {
+		goos, goarch = "js", "wasm"
+	}
 	if goos != "" {
 		ctxt.GOOS = goos
 	}
@@ -113,7 +121,10 @@ func (h *handlerServer) GetPageInfo(abspath, relpath string, mode PageInfoMode, 
 		// documentation (historic).
 		pkgname = "main" // assume package main since pkginfo.Name == ""
 		pkgfiles = pkginfo.IgnoredGoFiles
-	} else {
+	}
+
+	// get package information, if any
+	if len(pkgfiles) > 0 {
 		// build package AST
 		fset := token.NewFileSet()
 		files, err := h.c.parseFiles(fset, relpath, abspath, pkgfiles)
