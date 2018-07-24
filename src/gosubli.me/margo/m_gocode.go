@@ -42,7 +42,7 @@ func (g *GoCodeCalltip) Init() {
 	g.calltip = true
 }
 
-var calltipCache = NewAstCache(200)
+var calltipCache = NewAstCache(50)
 
 func init() {
 	registry.Register("gocode_complete", func(b *Broker) Caller {
