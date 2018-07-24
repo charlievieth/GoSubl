@@ -23,7 +23,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/charlievieth/godef/cache"
 	"golang.org/x/tools/go/ast/astutil"
 	"golang.org/x/tools/go/buildutil"
 	"golang.org/x/tools/go/loader"
@@ -596,11 +595,6 @@ func sameFile(x, y string) bool {
 	return false
 }
 
-var (
-	fileCache = cache.NewFile(128 * 1024 * 1024) // 128MB
-	dirCache  = cache.NewDir(4096)
-)
-
 // useModifiedFiles augments the provided build.Context by the
 // mapping from file names to alternative contents.
 func useModifiedFiles(orig *build.Context, modified map[string][]byte) *build.Context {
@@ -614,9 +608,8 @@ func useModifiedFiles(orig *build.Context, modified map[string][]byte) *build.Co
 		if content, ok := modified[path]; ok {
 			return rc(content)
 		}
-		return fileCache.OpenFile(path)
+		return os.Open(path)
 	}
-	ctxt.ReadDir = dirCache.ReadDir
 	return ctxt
 }
 
@@ -640,44 +633,8 @@ func useModifiedFile(orig *build.Context, modified string, content []byte) *buil
 				return ioutil.NopCloser(bytes.NewReader(content)), nil
 			}
 		}
-		return fileCache.OpenFileStat(path, fi)
+		return os.Open(path)
 	}
 
-	// WARN
-	ctxt.ReadDir = dirCache.ReadDir
-
 	return ctxt
-	return nil
 }
-
-/*
-func useModifiedFile(orig *build.Context, modified string, content []byte) *build.Context {
-	copy := *orig // make a copy
-	ctxt := &copy
-	base := filepath.Base(modified)
-	info, _ := os.Stat(modified)
-
-	ctxt.OpenFile = func(path string) (io.ReadCloser, error) {
-		// Fast path: name matches exactly.
-		if path == modified {
-			return ioutil.NopCloser(bytes.NewReader(content)), nil
-		}
-		fi, err := os.Stat(path)
-		if err != nil {
-			return nil, err
-		}
-		if info != nil && filepath.Base(path) == base {
-			if os.SameFile(info, fi) {
-				return ioutil.NopCloser(bytes.NewReader(content)), nil
-			}
-		}
-		return fileCache.OpenFileStat(path, fi)
-	}
-
-	// WARN
-	ctxt.ReadDir = dirCache.ReadDir
-
-	return ctxt
-	return nil
-}
-*/
