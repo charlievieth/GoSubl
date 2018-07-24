@@ -2,14 +2,7 @@ package main
 
 import (
 	"go/ast"
-	"go/build"
 	"go/token"
-	"os"
-	"regexp"
-	"runtime"
-	"strings"
-
-	"github.com/charlievieth/gotype"
 )
 
 type mLintReport struct {
@@ -36,14 +29,23 @@ type mLint struct {
 	reports []mLintReport
 }
 
-var (
-	mLintErrPat = regexp.MustCompile(`(.+?):(\d+):(\d+): (.+)`)
-	// mLinters    = map[string]func(kind string, m *mLint){
-	// 	"gs.flag.parse": mLintCheckFlagParse,
-	// 	"gs.types":      mLintCheckTypes,
-	// }
-)
+// TODO (CEV): This is now a no-op, either fix or remove this code.
+func (m *mLint) Call() (interface{}, string) {
+	return M{"reports": []mLintReport{}}, ""
+}
 
+// var (
+// mLintErrPat = regexp.MustCompile(`(.+?):(\d+):(\d+): (.+)`)
+
+// TODO (CEV): old code - update GoSubl python libs and remove
+//
+// mLinters    = map[string]func(kind string, m *mLint){
+// 	"gs.flag.parse": mLintCheckFlagParse,
+// 	"gs.types":      mLintCheckTypes,
+// }
+// )
+
+/*
 func (m *mLint) Call() (interface{}, string) {
 	const allErrors = false
 
@@ -88,6 +90,7 @@ func (m *mLint) Call() (interface{}, string) {
 	}
 	return res, ""
 }
+*/
 
 func init() {
 	registry.Register("lint", func(_ *Broker) Caller {
