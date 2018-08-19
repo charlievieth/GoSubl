@@ -1,7 +1,0 @@
-goos: darwin
-goarch: amd64
-pkg: github.com/charlievieth/pkgs
-BenchmarkImport-8         	      50	  90323118 ns/op	29176183 B/op	  133703 allocs/op
-BenchmarkImport_Cache-8   	      50	  70751098 ns/op	 7796173 B/op	  112025 allocs/op
-PASS
-ok  	github.com/charlievieth/pkgs	8.272s

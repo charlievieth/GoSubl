@@ -24,6 +24,8 @@ type walker struct {
 	ctxt      *build.Context
 	pkgs      map[string]*Pkg // abs dir path => *pkg
 	mu        sync.RWMutex
+	// ignored directories (full path)
+	ignored map[string]struct{}
 }
 
 func newWalker(importDir, srcDir string, ctxt *build.Context) (*walker, error) {
@@ -43,12 +45,21 @@ func newWalker(importDir, srcDir string, ctxt *build.Context) (*walker, error) {
 	if importDir != "" {
 		importDir = filepath.Clean(importDir)
 	}
+
+	// special vgo directories
+	ignored := map[string]struct{}{
+		filepath.Join(srcDir, "v"):   struct{}{},
+		filepath.Join(srcDir, "mod"): struct{}{},
+		filepath.Join(pkgDir, "v"):   struct{}{},
+		filepath.Join(pkgDir, "mod"): struct{}{},
+	}
 	w := &walker{
 		importDir: importDir,
 		srcDir:    toSlash(srcDir),
 		pkgDir:    toSlash(pkgDir),
 		ctxt:      ctxt,
 		pkgs:      make(map[string]*Pkg),
+		ignored:   ignored,
 	}
 	return w, nil
 }
@@ -76,9 +87,15 @@ func (w *walker) seen(dirname string) (ok bool) {
 	return
 }
 
-func (w *walker) skipDir(path, base string) bool {
-	return w.importDir != "" && (base == "vendor" || base == "internal") &&
-		!strings.HasPrefix(path, w.importDir)
+func skipDir(importDir, path, base string) bool {
+	if base != "vendor" && base != "internal" {
+		return false
+	}
+	dir := toSlash(filepath.Dir(path))
+	if strings.HasSuffix(dir, "/") {
+		dir = strings.TrimLeft(dir, "/")
+	}
+	return importDir == "" || !strings.HasPrefix(importDir, dir)
 }
 
 func (w *walker) walkPkg(path string, typ os.FileMode) error {
@@ -111,7 +128,12 @@ func (w *walker) walkPkg(path string, typ os.FileMode) error {
 			base == "testdata" || base == "node_modules" {
 			return filepath.SkipDir
 		}
-		if w.skipDir(path, base) {
+		if base == "v" || base == "mod" {
+			if _, ok := w.ignored[path]; ok {
+				return filepath.SkipDir
+			}
+		}
+		if skipDir(w.importDir, path, base) {
 			return filepath.SkipDir
 		}
 		return nil
@@ -142,8 +164,11 @@ func (w *walker) walk(path string, typ os.FileMode) error {
 	dir := filepath.Dir(path)
 	if typ.IsRegular() {
 		if dir == w.srcDir || !strings.HasSuffix(path, ".go") ||
-			strings.HasSuffix(path, "_test.go") || w.seen(dir) {
+			strings.HasSuffix(path, "_test.go") {
 			return nil
+		}
+		if w.seen(dir) {
+			return fastwalk.SkipFiles
 		}
 		name, ok := buildutil.ShortImport(w.ctxt, path)
 		if !ok {
@@ -168,7 +193,12 @@ func (w *walker) walk(path string, typ os.FileMode) error {
 			base == "testdata" || base == "node_modules" {
 			return filepath.SkipDir
 		}
-		if w.skipDir(path, base) {
+		if base == "v" || base == "mod" {
+			if _, ok := w.ignored[path]; ok {
+				return filepath.SkipDir
+			}
+		}
+		if skipDir(w.importDir, path, base) {
 			return filepath.SkipDir
 		}
 		return nil
@@ -270,9 +300,6 @@ func Walk(ctxt *build.Context, importDir string) ([]string, error) {
 	return paths, first
 }
 
-// TODO: Implement or remove
-func skipDir(fi os.FileInfo) bool { return false }
-
 var visitedSymlinks struct {
 	sync.Mutex
 	m map[string]struct{}
@@ -291,9 +318,7 @@ func shouldTraverse(dir string, fi os.FileInfo) bool {
 	if !ts.IsDir() {
 		return false
 	}
-	if skipDir(ts) {
-		return false
-	}
+	// CEV: removed 'func skipDir(fi os.FileInfo) bool'
 
 	realParent, err := filepath.EvalSymlinks(dir)
 	if err != nil {
