@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"go/ast"
+	"go/importer"
 	"go/parser"
 	"go/token"
 	"io"
@@ -16,7 +17,7 @@ import (
 	"sync"
 	"unicode/utf8"
 
-	"github.com/charlievieth/gocode"
+	"github.com/charlievieth/gocode/suggest"
 	"github.com/golang/groupcache/lru"
 )
 
@@ -55,7 +56,7 @@ func init() {
 }
 
 type GoCodeResponse struct {
-	Candidates []gocode.Candidate
+	Candidates []suggest.Candidate
 }
 
 var lastCalltip struct {
@@ -106,9 +107,9 @@ func (g *GoCode) Call() (interface{}, string) {
 	return g.response(g.complete(path, []byte(g.Src), off), nil, true)
 }
 
-var NoGocodeCandidates = []gocode.Candidate{}
+var NoGocodeCandidates = []suggest.Candidate{}
 
-func (g *GoCode) response(res []gocode.Candidate, err error, install bool) (GoCodeResponse, string) {
+func (g *GoCode) response(res []suggest.Candidate, err error, install bool) (GoCodeResponse, string) {
 	if res == nil || len(res) == 0 {
 		if install && g.Autoinst {
 			autoInstall(AutoInstOptions{
@@ -146,14 +147,14 @@ func (g *GoCode) filepath() string {
 	return filepath.Join(base, name)
 }
 
-func (g *GoCode) complete(filename string, src []byte, offset int) []gocode.Candidate {
-	conf := gocode.Config{
-		GOROOT:        g.GOROOT(),
-		GOPATH:        g.GOPATH(),
-		InstallSuffix: g.InstallSuffix,
-		Builtins:      g.Builtins,
+func (g *GoCode) complete(filename string, src []byte, offset int) []suggest.Candidate {
+	// TODO: pass in GOROOT and GOPATH
+	conf := suggest.Config{
+		Importer: importer.Default(),
+		Builtin:  g.Builtins,
 	}
-	return conf.Complete(src, filename, offset)
+	candidates, _ := conf.Suggest(filename, src, offset)
+	return candidates
 }
 
 func (g *GoCode) GOPATH() string {
@@ -175,7 +176,7 @@ func (g *GoCode) GOROOT() string {
 }
 
 // TODO: cache results and potentially cache AST ad file set.
-func (g *GoCode) calltips(filename string, src []byte, offset int) ([]gocode.Candidate, error) {
+func (g *GoCode) calltips(filename string, src []byte, offset int) ([]suggest.Candidate, error) {
 	fset, af, err := calltipCache.ParseFile(filename, src)
 	if af == nil {
 		return nil, err

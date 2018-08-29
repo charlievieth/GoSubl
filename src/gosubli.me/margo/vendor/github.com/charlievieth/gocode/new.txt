@@ -1,0 +1,9 @@
+goos: darwin
+goarch: amd64
+pkg: github.com/charlievieth/gocode/suggest
+BenchmarkOne-8        	   10000	    139759 ns/op	   59539 B/op	     288 allocs/op
+BenchmarkTen-8        	     500	   2720423 ns/op	  845743 B/op	    5411 allocs/op
+BenchmarkAll-8        	     100	  17038386 ns/op	 5215869 B/op	   34581 allocs/op
+BenchmarkParallel-8   	     200	   7164647 ns/op	 7737700 B/op	   42652 allocs/op
+PASS
+ok  	github.com/charlievieth/gocode/suggest	9.923s

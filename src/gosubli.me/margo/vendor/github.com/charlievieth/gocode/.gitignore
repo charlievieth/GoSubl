@@ -1,6 +1,7 @@
 *.8
 *.a
 *.out
+gocode
 gocode.exe
 goremote
 gocodetest
@@ -9,7 +10,3 @@ listidents
 showcursor
 showsmap
 rename
-*.test
-*.svg
-*.bash
-*.txt
