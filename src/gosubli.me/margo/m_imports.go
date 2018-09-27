@@ -23,7 +23,7 @@ type mImports struct {
 	TabWidth  int
 	TabIndent bool
 	Env       map[string]string
-	Autoinst  bool
+	Autoinst  bool // CEV: this is ignored
 }
 
 type mImportsResponse struct {
