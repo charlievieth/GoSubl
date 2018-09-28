@@ -4,6 +4,7 @@ import threading
 
 DOMAIN = 'GsQ'
 
+
 class Launcher(threading.Thread):
     def __init__(self, domain, f):
         threading.Thread.__init__(self)
@@ -30,7 +31,7 @@ class Runner(threading.Thread):
     def run(self):
         tid = gs.begin(self.domain, self.msg, self.set_status)
         try:
-            self.f() # WARN (CEV): Error
+            self.f()  # WARN (CEV): Error
         except Exception:
             gs.notice(self.domain, gs.traceback())
         finally:
@@ -71,6 +72,7 @@ try:
     m
 except:
     m = {}
+
 
 def dispatch(domain, f, msg='', set_status=False):
     global m

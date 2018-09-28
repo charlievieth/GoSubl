@@ -19,9 +19,10 @@ SNIPPET_VAR_PAT = re.compile(r'\$\{([a-zA-Z]\w*)\}')
 
 HINT_KEY = '%s.completion-hint' % DOMAIN
 
+
 def snippet_match(ctx, m):
     try:
-        for k,p in m.get('match', {}).items():
+        for k, p in m.get('match', {}).items():
             q = ctx.get(k, '')
             if p and gs.is_a_string(p):
                 if not re.search(p, str(q)):
@@ -32,19 +33,21 @@ def snippet_match(ctx, m):
         gs.notice(DOMAIN, gs.traceback())
     return True
 
+
 def expand_snippet_vars(vars, text, title, value):
     sub = lambda m: vars.get(m.group(1), '')
     return (
         SNIPPET_VAR_PAT.sub(sub, text),
         SNIPPET_VAR_PAT.sub(sub, title),
-        SNIPPET_VAR_PAT.sub(sub, value)
+        SNIPPET_VAR_PAT.sub(sub, value),
     )
+
 
 def resolve_snippets(ctx):
     cl = set()
     types = [''] if ctx.get('local') else ctx.get('types')
     vars = {}
-    for k,v in ctx.items():
+    for k, v in ctx.items():
         if gs.is_a_string(v):
             vars[k] = v
 
@@ -63,14 +66,20 @@ def resolve_snippets(ctx):
                             for typename in types:
                                 vars['typename'] = typename
                                 if typename:
-                                    if len(typename) > 1 and typename[0].islower() and typename[1].isupper():
+                                    if (
+                                        len(typename) > 1
+                                        and typename[0].islower()
+                                        and typename[1].isupper()
+                                    ):
                                         vars['typename_abbr'] = typename[1].lower()
                                     else:
                                         vars['typename_abbr'] = typename[0].lower()
                                 else:
                                     vars['typename_abbr'] = ''
 
-                                txt, ttl, val = expand_snippet_vars(vars, text, title, value)
+                                txt, ttl, val = expand_snippet_vars(
+                                    vars, text, title, value
+                                )
                                 s = u'%s\t%s \u0282' % (txt, ttl)
                                 cl.add((s, val))
             except:
@@ -79,11 +88,14 @@ def resolve_snippets(ctx):
         gs.notice(DOMAIN, gs.traceback())
     return list(cl)
 
+
 class GoSublime(sublime_plugin.EventListener):
     def on_query_completions(self, view, prefix, locations):
         pos = locations[0]
         scopes = view.scope_name(pos).split()
-        if ('source.go' not in scopes) or (gs.setting('gscomplete_enabled', False) is not True):
+        if ('source.go' not in scopes) or (
+            gs.setting('gscomplete_enabled', False) is not True
+        ):
             return []
 
         if gs.IGNORED_SCOPES.intersection(scopes):
@@ -132,14 +144,17 @@ class GoSublime(sublime_plugin.EventListener):
         if not src:
             return ([], AC_OPTS)
 
-        nc = view.substr(sublime.Region(pos, pos+1))
+        nc = view.substr(sublime.Region(pos, pos + 1))
         cl = self.complete(fn, offset, src, nc.isalpha() or nc == "(")
 
-        pc = view.substr(sublime.Region(pos-1, pos))
+        pc = view.substr(sublime.Region(pos - 1, pos))
         if show_snippets and (pc.isspace() or pc.isalpha()):
             if scopes[-1] == 'source.go':
                 cl.extend(resolve_snippets(ctx))
-            elif scopes[-1] == 'meta.block.go' and ('meta.function.plain.go' in scopes or 'meta.function.receiver.go' in scopes):
+            elif scopes[-1] == 'meta.block.go' and (
+                'meta.function.plain.go' in scopes
+                or 'meta.function.receiver.go' in scopes
+            ):
                 ctx['global'] = False
                 ctx['local'] = True
                 cl.extend(resolve_snippets(ctx))
@@ -175,14 +190,16 @@ class GoSublime(sublime_plugin.EventListener):
             tn = ent['type']
             cn = ent['class']
             nm = ent['name']
-            is_func = (cn == 'func')
-            is_func_type = (cn == 'type' and tn.startswith('func('))
+            is_func = cn == 'func'
+            is_func_type = cn == 'type' and tn.startswith('func(')
 
             if is_func:
                 if nm in ('main', 'init'):
                     continue
 
-                if not autocomplete_tests and nm.startswith(('Test', 'Benchmark', 'Example')):
+                if not autocomplete_tests and nm.startswith(
+                    ('Test', 'Benchmark', 'Example')
+                ):
                     continue
 
             if is_func or is_func_type:
@@ -195,37 +212,31 @@ class GoSublime(sublime_plugin.EventListener):
                     n, t = p
                     if t.startswith('...'):
                         n = '...'
-                    decl.append('${%d:%s}' % (i+1, n))
+                    decl.append('${%d:%s}' % (i + 1, n))
                 decl = ', '.join(decl)
                 ret = ret.strip('() ')
 
                 if is_func:
                     if func_name_only:
-                        comps.append((
-                            '%s\t%s %s' % (nm, ret, f_sfx),
-                            nm,
-                        ))
+                        comps.append(('%s\t%s %s' % (nm, ret, f_sfx), nm))
                     else:
-                        comps.append((
-                            '%s\t%s %s' % (nm, ret, f_sfx),
-                            '%s(%s)' % (nm, decl),
-                        ))
+                        comps.append(
+                            ('%s\t%s %s' % (nm, ret, f_sfx), '%s(%s)' % (nm, decl))
+                        )
                 else:
-                    comps.append((
-                        '%s\t%s %s' % (nm, tn, t_sfx),
-                        nm,
-                    ))
+                    comps.append(('%s\t%s %s' % (nm, tn, t_sfx), nm))
 
                     if autocomplete_closures:
-                        comps.append((
-                            '%s {}\tfunc() {...} %s' % (nm, s_sfx),
-                            '%s {\n\t${0}\n}' % tn,
-                        ))
+                        comps.append(
+                            (
+                                '%s {}\tfunc() {...} %s' % (nm, s_sfx),
+                                '%s {\n\t${0}\n}' % tn,
+                            )
+                        )
             elif cn != 'PANIC':
-                comps.append((
-                    '%s\t%s %s' % (nm, tn, self.typeclass_prefix(cn, tn)),
-                    nm,
-                ))
+                comps.append(
+                    ('%s\t%s %s' % (nm, tn, self.typeclass_prefix(cn, tn)), nm)
+                )
         return comps
 
     def typeclass_prefix(self, typeclass, typename):
@@ -263,6 +274,7 @@ def declex(s):
         ret = s[ep:].strip() if ep < lp else ''
     return (params, ret)
 
+
 def _ct_poller():
     try:
         view = sublime.active_window().active_view()
@@ -274,6 +286,7 @@ def _ct_poller():
         pass
 
     sublime.set_timeout(_ct_poller, 1000)
+
 
 class GsShowCallTip(sublime_plugin.TextCommand):
     def is_enabled(self):
@@ -293,10 +306,9 @@ class GsShowCallTip(sublime_plugin.TextCommand):
                         pfx = 'func('
                         typ = c['type']
                         if typ.startswith(pfx):
-                            s = 'func %s(%s' % (c['name'], typ[len(pfx):])
+                            s = 'func %s(%s' % (c['name'], typ[len(pfx) :])
                         else:
                             s = '%s: %s' % (c['name'], typ)
-
 
                         view.set_status(HINT_KEY, s)
                     else:

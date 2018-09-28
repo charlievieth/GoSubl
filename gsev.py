@@ -5,6 +5,7 @@ import sublime_plugin
 
 DOMAIN = 'GsEV'
 
+
 class EV(sublime_plugin.EventListener):
     def on_pre_save(self, view):
         view.run_command('gs_fmt')
@@ -25,6 +26,7 @@ class EV(sublime_plugin.EventListener):
     def on_load(self, view):
         sublime.set_timeout(lambda: do_set_gohtml_syntax(view), 0)
 
+
 class GsOnLeftClick(sublime_plugin.TextCommand):
     def run(self, edit):
         view = self.view
@@ -34,12 +36,14 @@ class GsOnLeftClick(sublime_plugin.TextCommand):
         elif view.score_selector(gs.sel(view).begin(), "text.9o") > 0:
             view.window().run_command("gs9o_open_selection")
 
+
 class GsOnRightClick(sublime_plugin.TextCommand):
     def run(self, edit):
         view = self.view
         if gs.is_go_source_view(view):
             if not gstest.handle_action(view, 'right-click'):
                 view.run_command('gs_doc', {"mode": "hint"})
+
 
 def do_post_save(view):
     if not gs.is_pkg_view(view):
@@ -56,6 +60,7 @@ def do_post_save(view):
             gs.notice(DOMAIN, 'Error %s' % ex)
         finally:
             gs.end(tid)
+
 
 def do_sync_active_view(view):
     fn = view.file_name() or ''
@@ -74,9 +79,9 @@ def do_sync_active_view(view):
             m = gs.mirror_settings(psettings)
         gs.set_attr('last_active_project_settings', gs.dval(m, {}))
 
+
 def do_set_gohtml_syntax(view):
     fn = view.file_name()
     xl = gs.setting('gohtml_extensions', [])
     if xl and fn and fn.lower().endswith(tuple(xl)):
         view.set_syntax_file(gs.tm_path('gohtml'))
-

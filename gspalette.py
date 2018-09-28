@@ -9,11 +9,13 @@ import sublime_plugin
 
 DOMAIN = 'GsPalette'
 
+
 class Loc(object):
     def __init__(self, fn, row, col=0):
         self.fn = fn
         self.row = row
         self.col = col
+
 
 class GsPaletteCommand(sublime_plugin.WindowCommand):
     def is_enabled(self):
@@ -104,6 +106,7 @@ class GsPaletteCommand(sublime_plugin.WindowCommand):
             action, args = actions.get(i, (None, None))
             if i >= 0 and action:
                 action(args)
+
         gs.show_quick_panel(items, on_done)
 
     def add_item(self, item, action=None, args=None):
@@ -160,7 +163,7 @@ class GsPaletteCommand(sublime_plugin.WindowCommand):
                 r = reps[k]
                 loc = Loc(view.file_name(), r.row, r.col)
                 m = []
-                m.append("%sline %d:" % (indent, r.row+1))
+                m.append("%sline %d:" % (indent, r.row + 1))
                 lc = 0
                 for ln in r.msg.split('\n'):
                     if ln:
@@ -177,10 +180,10 @@ class GsPaletteCommand(sublime_plugin.WindowCommand):
 
         self.do_show_panel()
 
-
     def palette_imports(self, view, direct=False):
         indent = '' if direct else '    '
         src = view.substr(sublime.Region(0, view.size()))
+
         def f(im, err):
             if err:
                 gs.notice(DOMAIN, err)
@@ -200,14 +203,13 @@ class GsPaletteCommand(sublime_plugin.WindowCommand):
                         if name == path:
                             delete_imports.append(('%sdelete: %s' % (indent, name), i))
                         else:
-                            delete_imports.append(('%sdelete: %s ( %s )' % (indent, name, path), i))
+                            delete_imports.append(
+                                ('%sdelete: %s ( %s )' % (indent, name, path), i)
+                            )
 
                 if not skipAdd:
                     s = '%s%s' % (indent, path)
-                    m = {
-                        'path': path,
-                        'add': True,
-                    }
+                    m = {'path': path, 'add': True}
 
                     nm = paths[path]
                     if nm and nm != path and not path.endswith('/%s' % nm):
@@ -231,9 +233,7 @@ class GsPaletteCommand(sublime_plugin.WindowCommand):
     def toggle_import(self, a):
         view, decl = a
         im, err = mg9.imports(
-            view.file_name(),
-            view.substr(sublime.Region(0, view.size())),
-            [decl]
+            view.file_name(), view.substr(sublime.Region(0, view.size())), [decl]
         )
 
         if err:
@@ -241,15 +241,18 @@ class GsPaletteCommand(sublime_plugin.WindowCommand):
         else:
             src = im.get('src', '')
             line_ref = im.get('lineRef', 0)
-            r = view.full_line(view.text_point(max(0, line_ref-1), 0))
+            r = view.full_line(view.text_point(max(0, line_ref - 1), 0))
             if not src or line_ref < 1 or not r:
                 return
 
-            view.run_command('gs_patch_imports', {
-                'pos': r.end(),
-                'content': src,
-                'added_path': (decl.get('path') if decl.get('add') else '')
-            })
+            view.run_command(
+                'gs_patch_imports',
+                {
+                    'pos': r.end(),
+                    'content': src,
+                    'added_path': (decl.get('path') if decl.get('add') else ''),
+                },
+            )
 
     def jump_to(self, a):
         view, loc = a

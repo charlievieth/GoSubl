@@ -9,6 +9,7 @@ DOMAIN = 'GsTest'
 
 TEST_PAT = re.compile(r'^((Test|Example|Benchmark)\w*)')
 
+
 class GsTestCommand(sublime_plugin.WindowCommand):
     def is_enabled(self):
         return gs.is_go_source_view(self.window.active_view())
@@ -25,7 +26,7 @@ class GsTestCommand(sublime_plugin.WindowCommand):
             decls.extend(res.get('pkg_decls', []))
             for d in decls:
                 name = d['name']
-                prefix, _ =  match_prefix_name(name)
+                prefix, _ = match_prefix_name(name)
                 kind = d['kind'].lstrip('+- ')
                 if prefix and kind == 'func' and d['repr'] == '':
                     mats[prefix] = True
@@ -52,7 +53,9 @@ class GsTestCommand(sublime_plugin.WindowCommand):
             def cb(i, win):
                 if i >= 0:
                     a = args.get(ents[i], [])
-                    win.active_view().run_command('gs9o_open', {'run': gs.lst('go', 'test', a)})
+                    win.active_view().run_command(
+                        'gs9o_open', {'run': gs.lst('go', 'test', a)}
+                    )
 
             gs.show_quick_panel(ents, cb)
 
@@ -72,6 +75,7 @@ class GsTestCommand(sublime_plugin.WindowCommand):
 def match_prefix_name(s):
     m = TEST_PAT.match(s)
     return (m.group(2), m.group(1)) if m else ('', '')
+
 
 def handle_action(view, action):
     fn = view.file_name()

@@ -18,7 +18,9 @@ DOMAIN = "9o"
 AC_OPTS = sublime.INHIBIT_WORD_COMPLETIONS | sublime.INHIBIT_EXPLICIT_COMPLETIONS
 SPLIT_FN_POS_PAT = re.compile(r'(.+?)(?:[:](\d+))?(?:[:](\d+))?$')
 URL_SCHEME_PAT = re.compile(r'^[\w.+-]+://')
-URL_PATH_PAT = re.compile(r'^(?:[\w.+-]+://|(?:www|(?:\w+\.)*(?:golang|pkgdoc|gosublime)\.org))')
+URL_PATH_PAT = re.compile(
+    r'^(?:[\w.+-]+://|(?:www|(?:\w+\.)*(?:golang|pkgdoc|gosublime)\.org))'
+)
 HIST_EXPAND_PAT = re.compile(r'^(\^+)\s*(\d+)$')
 
 HOURGLASS = u'\u231B'
@@ -55,20 +57,23 @@ DEFAULT_COMMANDS = [
     'hist erase',
     'cd',
 ]
-DEFAULT_CL = [(s, s+' ') for s in DEFAULT_COMMANDS]
+DEFAULT_CL = [(s, s + ' ') for s in DEFAULT_COMMANDS]
 
 stash = {}
 tid_alias = {}
 
+
 def active_wd(win=None):
     _, v = gs.win_view(win=win)
     return gs.basedir_or_cwd(v.file_name() if v else '')
+
 
 def _hkey(wd):
     name = gs.setting("9o_instance")
     if name:
         wd = name
     return '9o.hist.%s' % wd
+
 
 def _wdid(wd):
     name = gs.setting("9o_instance")
@@ -86,15 +91,17 @@ class EV(sublime_plugin.EventListener):
         cl = set()
 
         hkey = _hkey(view.settings().get('9o.wd', ''))
-        cl.update((k, k+' ') for k in gs.dval(gs.aso().get(hkey), []))
-        cl.update((k, k+' ') for k in aliases())
-        cl.update((k, k+' ') for k in builtins())
+        cl.update((k, k + ' ') for k in gs.dval(gs.aso().get(hkey), []))
+        cl.update((k, k + ' ') for k in aliases())
+        cl.update((k, k + ' ') for k in builtins())
         cl.update(DEFAULT_CL)
 
         return ([cl_esc(e) for e in sorted(cl)], AC_OPTS)
 
+
 def cl_esc(e):
     return (e[0], e[1].replace('$', '\\$'))
+
 
 class Gs9oBuildCommand(sublime_plugin.WindowCommand):
     def is_enabled(self):
@@ -103,8 +110,11 @@ class Gs9oBuildCommand(sublime_plugin.WindowCommand):
 
     def run(self):
         view = self.window.active_view()
-        args = {'run': gs.setting('build_command', ['^1'])} if gs.is_pkg_view(view) else {}
+        args = (
+            {'run': gs.setting('build_command', ['^1'])} if gs.is_pkg_view(view) else {}
+        )
         view.run_command('gs9o_open', args)
+
 
 class Gs9oInsertLineCommand(sublime_plugin.TextCommand):
     def run(self, edit, after=True):
@@ -160,6 +170,7 @@ class Gs9oMoveHist(sublime_plugin.TextCommand):
         view.sel().clear()
         view.sel().add(sublime.Region(n, n))
 
+
 class Gs9oInitCommand(sublime_plugin.TextCommand):
     def run(self, edit, wd=None):
         v = self.view
@@ -172,15 +183,20 @@ class Gs9oInitCommand(sublime_plugin.TextCommand):
         s = '[ %s ] # \n' % gs.simple_fn(wd).replace('#', '~')
 
         if was_empty:
-            v.insert(edit, 0, 'GoSublime %s 9o: type `help` for help and command documentation\n\n' % about.VERSION)
+            v.insert(
+                edit,
+                0,
+                'GoSublime %s 9o: type `help` for help and command documentation\n\n'
+                % about.VERSION,
+            )
 
-        if was_empty or v.substr(v.size()-1) == '\n':
+        if was_empty or v.substr(v.size() - 1) == '\n':
             v.insert(edit, v.size(), s)
         else:
-            v.insert(edit, v.size(), '\n'+s)
+            v.insert(edit, v.size(), '\n' + s)
 
         v.sel().clear()
-        n = v.size()-1
+        n = v.size() - 1
         v.sel().add(sublime.Region(n, n))
 
         opts = {
@@ -226,18 +242,18 @@ class Gs9oInitCommand(sublime_plugin.TextCommand):
         if was_empty:
             v.show(0)
         else:
-            v.show(v.size()-1)
+            v.show(v.size() - 1)
 
         os.chdir(wd)
 
+
 class Gs9oOpenCommand(sublime_plugin.TextCommand):
     def run(self, edit, wd=None, run=[], save_hist=False, focus_view=True):
-        self.view.window().run_command('gs9o_win_open', {
-            'wd': wd,
-            'run': run,
-            'save_hist': save_hist,
-            'focus_view': focus_view,
-        })
+        self.view.window().run_command(
+            'gs9o_win_open',
+            {'wd': wd, 'run': run, 'save_hist': save_hist, 'focus_view': focus_view},
+        )
+
 
 class Gs9oWinOpenCommand(sublime_plugin.WindowCommand):
     def run(self, wd=None, run=[], save_hist=False, focus_view=True):
@@ -261,15 +277,19 @@ class Gs9oWinOpenCommand(sublime_plugin.WindowCommand):
         v.run_command('gs9o_init', {'wd': wd})
 
         if run:
-            v.run_command('gs9o_paste_exec', {'cmd': ' '.join(run), 'save_hist': save_hist})
+            v.run_command(
+                'gs9o_paste_exec', {'cmd': ' '.join(run), 'save_hist': save_hist}
+            )
+
 
 class Gs9oPasteExecCommand(sublime_plugin.TextCommand):
     def run(self, edit, cmd, save_hist=False):
         view = self.view
-        view.insert(edit, view.line(view.size()-1).end(), cmd)
+        view.insert(edit, view.line(view.size() - 1).end(), cmd)
         view.sel().clear()
-        view.sel().add(view.line(view.size()-1).end())
+        view.sel().add(view.line(view.size() - 1).end())
         view.run_command('gs9o_exec', {'save_hist': save_hist})
+
 
 class Gs9oOpenSelectionCommand(sublime_plugin.TextCommand):
     def is_enabled(self):
@@ -299,10 +319,12 @@ class Gs9oOpenSelectionCommand(sublime_plugin.TextCommand):
 
         act_on(v, actions)
 
+
 def act_on(view, actions):
     for a in actions:
         if act_on_path(view, a):
             break
+
 
 def act_on_path(view, path):
     row = 0
@@ -313,8 +335,8 @@ def act_on_path(view, path):
         path = 'gs.view://%s' % m.group(1)
         m2 = gs.ROWCOL_PAT.match(m.group(2))
         if m2:
-            row = int(m2.group(1))-1 if m2.group(1) else 0
-            col = int(m2.group(2))-1 if m2.group(2) else 0
+            row = int(m2.group(1)) - 1 if m2.group(1) else 0
+            col = int(m2.group(2)) - 1 if m2.group(2) else 0
     else:
         if URL_PATH_PAT.match(path):
             if path.lower().startswith('gs.packages://'):
@@ -334,8 +356,8 @@ def act_on_path(view, path):
         wd = view.settings().get('9o.wd') or active_wd()
         m = SPLIT_FN_POS_PAT.match(path)
         path = gs.apath((m.group(1) if m else path), wd)
-        row = max(0, int(m.group(2))-1 if (m and m.group(2)) else 0)
-        col = max(0, int(m.group(3))-1 if (m and m.group(3)) else 0)
+        row = max(0, int(m.group(2)) - 1 if (m and m.group(2)) else 0)
+        col = max(0, int(m.group(3)) - 1 if (m and m.group(3)) else 0)
 
     if m or os.path.exists(path):
         gs.focus(path, row, col, win=view.window())
@@ -350,6 +372,7 @@ def _exparg(s, m):
     s = string.Template(s).safe_substitute(m)
     s = os.path.expanduser(s)
     return s
+
 
 class Gs9oExecCommand(sublime_plugin.TextCommand):
     def is_enabled(self):
@@ -449,10 +472,13 @@ class Gs9oExecCommand(sublime_plugin.TextCommand):
         else:
             view.insert(edit, gs.sel(view).begin(), '\n')
 
+
 class Gs9oPushOutput(sublime_plugin.TextCommand):
     def run(self, edit, rkey, output, hourglass_repl=''):
         view = self.view
-        output = '\t%s' % gs.ustr(output).strip().replace('\r', '').replace('\n', '\n\t')
+        output = '\t%s' % gs.ustr(output).strip().replace('\r', '').replace(
+            '\n', '\n\t'
+        )
         regions = view.get_regions(rkey)
         if regions:
             line = view.line(regions[0].begin())
@@ -473,18 +499,24 @@ class Gs9oPushOutput(sublime_plugin.TextCommand):
         else:
             view.show(r.begin())
 
+
 class Gs9oRunManyCommand(sublime_plugin.TextCommand):
     def run(self, edit, wd=None, commands=[], save_hist=False, focus_view=False):
         for run in commands:
-            self.view.run_command("gs9o_open", {
-                'run': run,
-                'wd': wd,
-                'save_hist': save_hist,
-                'focus_view': focus_view,
-            })
+            self.view.run_command(
+                "gs9o_open",
+                {
+                    'run': run,
+                    'wd': wd,
+                    'save_hist': save_hist,
+                    'focus_view': focus_view,
+                },
+            )
+
 
 def aliases():
     return gs.setting('9o_aliases', {}).copy()
+
 
 def builtins():
     m = gs.gs9o.copy()
@@ -498,32 +530,41 @@ def builtins():
 
     return m
 
+
 def push_output(view, rkey, output, hourglass_repl=''):
     def f():
-        view.run_command('gs9o_push_output', {
-            'rkey': rkey,
-            'output': output,
-            'hourglass_repl': hourglass_repl,
-        })
+        view.run_command(
+            'gs9o_push_output',
+            {'rkey': rkey, 'output': output, 'hourglass_repl': hourglass_repl},
+        )
 
     sublime.set_timeout(f, 0)
+
 
 def _save_all(win, wd):
     if gs.setting('autosave') is True and win is not None:
         for v in win.views():
             try:
                 fn = v.file_name()
-                if fn and v.is_dirty() and fn.endswith('.go') and os.path.dirname(fn) == wd:
+                if (
+                    fn
+                    and v.is_dirty()
+                    and fn.endswith('.go')
+                    and os.path.dirname(fn) == wd
+                ):
                     v.run_command('gs_fmt_save')
             except Exception:
                 gs.error_traceback(DOMAIN)
+
 
 def _9_begin_call(name, view, edit, args, wd, rkey, cid):
     dmn = '%s: 9 %s' % (DOMAIN, name)
     msg = '[ %s ] # 9 %s' % (gs.simple_fn(wd), ' '.join(args))
     if not cid:
         cid = '9%s-%s' % (name, uuid.uuid4())
-    tid = gs.begin(dmn, msg, set_status=False, cancel=lambda: mg9.acall('kill', {'cid': cid}, None))
+    tid = gs.begin(
+        dmn, msg, set_status=False, cancel=lambda: mg9.acall('kill', {'cid': cid}, None)
+    )
     tid_alias['%s-%s' % (name, wd)] = tid
 
     def cb(res, err):
@@ -533,24 +574,24 @@ def _9_begin_call(name, view, edit, args, wd, rkey, cid):
         fn = res.get('fn')
         if fn and tmp_fn:
             bfn = os.path.basename(tmp_fn)
-            repls = [
-                './%s' % bfn,
-                '.\\%s' % bfn,
-                tmp_fn,
-            ]
+            repls = ['./%s' % bfn, '.\\%s' % bfn, tmp_fn]
             for s in repls:
                 out = out.replace(s, fn)
 
         def f():
             gs.end(tid)
-            push_output(view, rkey, out, hourglass_repl='| done: %s' % res.get('dur', ''))
+            push_output(
+                view, rkey, out, hourglass_repl='| done: %s' % res.get('dur', '')
+            )
 
         sublime.set_timeout(f, 0)
 
     return cid, cb
 
+
 def cmd_echo(view, edit, args, wd, rkey):
     push_output(view, rkey, ' '.join(args))
+
 
 def cmd_which(view, edit, args, wd, rkey):
     l = []
@@ -580,6 +621,7 @@ def cmd_which(view, edit, args, wd, rkey):
 
     push_output(view, rkey, '\n'.join(l))
 
+
 def cmd_cd(view, edit, args, wd, rkey):
     try:
         if args:
@@ -600,28 +642,24 @@ def cmd_cd(view, edit, args, wd, rkey):
     push_output(view, rkey, '')
     view.run_command('gs9o_init', {'wd': wd})
 
+
 def cmd_reset(view, edit, args, wd, rkey):
     push_output(view, rkey, '')
     view.erase(edit, sublime.Region(0, view.size()))
     view.run_command('gs9o_init')
 
+
 def cmd_clear(view, edit, args, wd, rkey):
     cmd_reset(view, edit, args, wd, rkey)
+
 
 def cmd_go(view, edit, args, wd, rkey):
     _save_all(view.window(), wd)
 
     cid, cb = _9_begin_call('go', view, edit, args, wd, rkey, '9go-%s' % wd)
-    a = {
-        'cid': cid,
-        'env': sh.env(),
-        'cwd': wd,
-        'cmd': {
-            'name': 'go',
-            'args': args,
-        }
-    }
+    a = {'cid': cid, 'env': sh.env(), 'cwd': wd, 'cmd': {'name': 'go', 'args': args}}
     sublime.set_timeout(lambda: mg9.acall('sh', a, cb), 0)
+
 
 def cmd_cancel_replay(view, edit, args, wd, rkey):
     cid = ''
@@ -639,18 +677,17 @@ def cmd_cancel_replay(view, edit, args, wd, rkey):
     mg9.acall('kill', {'cid': cid}, None)
     push_output(view, rkey, '')
 
+
 def cmd_sh(view, edit, args, wd, rkey):
     cid, cb = _9_begin_call('sh', view, edit, args, wd, rkey, '')
     a = {
         'cid': cid,
         'env': sh.env(),
         'cwd': wd,
-        'cmd': {
-            'name': args[0],
-            'args': args[1:],
-        }
+        'cmd': {'name': args[0], 'args': args[1:]},
     }
     sublime.set_timeout(lambda: mg9.acall('sh', a, cb), 0)
+
 
 def cmd_share(view, edit, args, wd, rkey):
     av = gs.active_valid_go_view(win=view.window())
@@ -664,18 +701,23 @@ def cmd_share(view, edit, args, wd, rkey):
 
     mg9.share(gs.view_src(view.window().active_view()), f)
 
+
 def cmd_help(view, edit, args, wd, rkey):
     gs.focus(gs.dist_path('9o.md'))
     push_output(view, rkey, '')
 
+
 def cmd_run(view, edit, args, wd, rkey):
     cmd_9(view, edit, gs.lst('run', args), wd, rkey)
+
 
 def cmd_replay(view, edit, args, wd, rkey):
     cmd_9(view, edit, gs.lst('replay', args), wd, rkey)
 
+
 def cmd_build(view, edit, args, wd, rkey):
     cmd_9(view, edit, gs.lst('build', args), wd, rkey)
+
 
 def cmd_9(view, edit, args, wd, rkey):
     if len(args) == 0 or args[0] not in ('run', 'replay', 'build'):
@@ -710,9 +752,12 @@ def cmd_9(view, edit, args, wd, rkey):
 
     sublime.set_timeout(lambda: mg9.acall('play', a, cb), 0)
 
+
 def cmd_tskill(view, edit, args, wd, rkey):
     if len(args) == 0:
-        sublime.set_timeout(lambda: sublime.active_window().run_command("gs_show_tasks"), 0)
+        sublime.set_timeout(
+            lambda: sublime.active_window().run_command("gs_show_tasks"), 0
+        )
         push_output(view, rkey, '')
         return
 
@@ -724,6 +769,7 @@ def cmd_tskill(view, edit, args, wd, rkey):
 
     push_output(view, rkey, '\n'.join(l))
 
+
 def _env_settings(d, view, edit, args, wd, rkey):
     if len(args) > 0:
         m = {}
@@ -733,18 +779,23 @@ def _env_settings(d, view, edit, args, wd, rkey):
         m = d
 
     # WARN (CEV): Update
-    s = '\n'.join((
-        'Default Settings file: gs.packages://GoSublime/GoSublime.sublime-settings (do not edit this file)',
-        'User settings file: gs.packages://User/GoSublime.sublime-settings (add/change your settings here)',
-        json.dumps(m, sort_keys=True, indent=4),
-    ))
+    s = '\n'.join(
+        (
+            'Default Settings file: gs.packages://GoSublime/GoSublime.sublime-settings (do not edit this file)',
+            'User settings file: gs.packages://User/GoSublime.sublime-settings (add/change your settings here)',
+            json.dumps(m, sort_keys=True, indent=4),
+        )
+    )
     push_output(view, rkey, s)
+
 
 def cmd_settings(view, edit, args, wd, rkey):
     _env_settings(gs.settings_dict(), view, edit, args, wd, rkey)
 
+
 def cmd_env(view, edit, args, wd, rkey):
     _env_settings(sh.env(), view, edit, args, wd, rkey)
+
 
 def cmd_hist(view, edit, args, wd, rkey):
     aso = gs.aso()
@@ -756,7 +807,7 @@ def cmd_hist(view, edit, args, wd, rkey):
         hist = gs.dval(aso.get(hkey), [])
         hist.reverse()
         hlen = len(hist)
-        s = '\n'.join('^%d: %s' % (i+1, v) for i,v in enumerate(hist))
+        s = '\n'.join('^%d: %s' % (i + 1, v) for i, v in enumerate(hist))
     elif len(args) == 1:
         if args[0] == 'erase':
             aso.erase(hkey)

@@ -20,7 +20,7 @@ try:
 except ImportError:
     import queue
 
-PY3K = (sys.version_info[0] == 3)
+PY3K = sys.version_info[0] == 3
 
 penc = locale.getpreferredencoding()
 try_encodings = ['utf-8']
@@ -104,60 +104,50 @@ CLASS_PREFIXES = {
     'const': u'\u0196',
     'func': u'\u0192',
     'type': u'\u0288',
-    'var':  u'\u03BD',
+    'var': u'\u03BD',
     'package': u'package \u03C1',
 }
 
-NAME_PREFIXES = {
-    'interface': u'\u00A1',
-}
+NAME_PREFIXES = {'interface': u'\u00A1'}
 
 # TODO: Update via margo
-GOARCHES = [
-    '386',
-    'amd64',
-    'arm',
-]
+GOARCHES = ['386', 'amd64', 'arm']
 
 # TODO: Update via margo
-GOOSES = [
-    'darwin',
-    'freebsd',
-    'linux',
-    'netbsd',
-    'openbsd',
-    'plan9',
-    'windows',
-    'unix',
-]
+GOOSES = ['darwin', 'freebsd', 'linux', 'netbsd', 'openbsd', 'plan9', 'windows', 'unix']
 
 GOOSARCHES = []
 for s in GOOSES:
     for arch in GOARCHES:
         GOOSARCHES.append('%s_%s' % (s, arch))
 
-GOOSARCHES_PAT = re.compile(r'^(.+?)(?:_(%s))?(?:_(%s))?\.go$' % ('|'.join(GOOSES), '|'.join(GOARCHES)))
+GOOSARCHES_PAT = re.compile(
+    r'^(.+?)(?:_(%s))?(?:_(%s))?\.go$' % ('|'.join(GOOSES), '|'.join(GOARCHES))
+)
 
-IGNORED_SCOPES = frozenset([
-    'string.quoted.double.go',
-    'string.quoted.single.go',
-    'string.quoted.raw.go',
-    'comment.line.double-slash.go',
-    'comment.block.go',
-
-    # gs-next
-    'comment.block.go',
-    'comment.line.double-slash.go',
-    'string.quoted.double.go',
-    'string.quoted.raw.go',
-    'constant.other.rune.go',
-])
+IGNORED_SCOPES = frozenset(
+    [
+        'string.quoted.double.go',
+        'string.quoted.single.go',
+        'string.quoted.raw.go',
+        'comment.line.double-slash.go',
+        'comment.block.go',
+        # gs-next
+        'comment.block.go',
+        'comment.line.double-slash.go',
+        'string.quoted.double.go',
+        'string.quoted.raw.go',
+        'constant.other.rune.go',
+    ]
+)
 
 VFN_ID_PAT = re.compile(r'^(?:gs\.)?view://(\d+)(.*?)$', re.IGNORECASE)
 ROWCOL_PAT = re.compile(r'^[:]*(\d+)(?:[:](\d+))?[:]*$')
 
 USER_DIR = os.path.expanduser('~')
-USER_DIR_PAT = re.compile(r'^%s/' % (re.escape(USER_DIR.replace('\\', '/').rstrip('/'))))
+USER_DIR_PAT = re.compile(
+    r'^%s/' % (re.escape(USER_DIR.replace('\\', '/').rstrip('/')))
+)
 
 
 def simple_fn(fn):
@@ -190,7 +180,9 @@ def temp_dir(subdir=''):
 
 def temp_file(suffix='', prefix='', delete=True):
     try:
-        f = tempfile.NamedTemporaryFile(suffix=suffix, prefix=prefix, dir=temp_dir(), delete=delete)
+        f = tempfile.NamedTemporaryFile(
+            suffix=suffix, prefix=prefix, dir=temp_dir(), delete=delete
+        )
     except Exception as ex:
         return (None, 'Error: %s' % ex)
     return (f, '')
@@ -204,7 +196,7 @@ def basedir_or_cwd(fn):
 
 def popen(args, stdout=PIPE, stderr=PIPE, shell=False, environ={}, cwd=None, bufsize=0):
     ev = env()
-    for k,v in environ.items():
+    for k, v in environ.items():
         ev[astr(k)] = astr(v)
 
     try:
@@ -212,8 +204,18 @@ def popen(args, stdout=PIPE, stderr=PIPE, shell=False, environ={}, cwd=None, buf
     except Exception:
         setsid = None
 
-    return Popen(args, stdout=stdout, stderr=stderr, stdin=PIPE, startupinfo=STARTUP_INFO,
-        shell=shell, env=ev, cwd=cwd, preexec_fn=setsid, bufsize=bufsize)
+    return Popen(
+        args,
+        stdout=stdout,
+        stderr=stderr,
+        stdin=PIPE,
+        startupinfo=STARTUP_INFO,
+        shell=shell,
+        env=ev,
+        cwd=cwd,
+        preexec_fn=setsid,
+        bufsize=bufsize,
+    )
 
 
 def is_a(v, base):
@@ -286,12 +288,14 @@ def println(*a):
     print(l)
     return l
 
+
 def debug(domain, *a):
     if setting('_debug') is True:
         print('\n** DEBUG ** %s ** %s **:' % (domain, datetime.datetime.now()))
         for s in a:
             print(ustr(s).strip())
         print('--------------------------------')
+
 
 def log(*a):
     try:
@@ -337,10 +341,19 @@ def notice_undo(domain, txt, view, should_undo):
         if should_undo:
             view.run_command('undo')
         notice(domain, txt)
+
     sublime.set_timeout(cb, 0)
 
 
-def show_output(domain, s, print_output=True, syntax_file='', replace=True, merge_domain=False, scroll_end=False):
+def show_output(
+    domain,
+    s,
+    print_output=True,
+    syntax_file='',
+    replace=True,
+    merge_domain=False,
+    scroll_end=False,
+):
     def cb(domain, s, print_output, syntax_file):
         panel_name = '%s-output' % domain
         if merge_domain:
@@ -352,12 +365,15 @@ def show_output(domain, s, print_output=True, syntax_file='', replace=True, merg
 
         win = sublime.active_window()
         if win:
-            win.get_output_panel(panel_name).run_command('gs_set_output_panel_content', {
-                'content': s,
-                'syntax_file': syntax_file,
-                'scroll_end': scroll_end,
-                'replace': replace,
-            })
+            win.get_output_panel(panel_name).run_command(
+                'gs_set_output_panel_content',
+                {
+                    'content': s,
+                    'syntax_file': syntax_file,
+                    'scroll_end': scroll_end,
+                    'replace': replace,
+                },
+            )
             win.run_command("show_panel", {"panel": "output.%s" % panel_name})
 
     sublime.set_timeout(lambda: cb(domain, s, print_output, syntax_file), 0)
@@ -453,11 +469,7 @@ def env(m={}):
         add_path.append(gobin)
 
     if os_is_windows():
-        l = [
-            '~\\bin',
-            '~\\go\\bin',
-            'C:\\Go\\bin',
-        ]
+        l = ['~\\bin', '~\\go\\bin', 'C:\\Go\\bin']
     else:
         l = [
             '~/bin',
@@ -477,7 +489,6 @@ def env(m={}):
         if s and s not in add_path:
             add_path.append(s)
 
-
     e['PATH'] = os.pathsep.join(add_path)
 
     # Ensure no unicode objects leak through. The reason is twofold:
@@ -495,6 +506,7 @@ def env(m={}):
             println('%s: Bad env: %s' % (NAME, ex))
 
     return clean_env
+
 
 def mirror_settings(so):
     m = {}
@@ -590,7 +602,7 @@ def do_focus(fn, row, col, win, focus_pat, cb):
             r = view.find(focus_pat, 0)
             if r:
                 row, col = view.rowcol(r.begin())
-        view.run_command("gs_goto_row_col", { "row": row, "col": col })
+        view.run_command("gs_goto_row_col", {"row": row, "col": col})
         if cb:
             cb(True)
 
@@ -609,7 +621,7 @@ def sm_cb():
         tm = sm_tm
         s = sm_text
         if s:
-            delta = (datetime.datetime.now() - tm)
+            delta = datetime.datetime.now() - tm
             if delta.seconds >= 10:
                 sm_text = ''
 
@@ -687,7 +699,11 @@ def task_list():
 def cancel_task(tid):
     t = task(tid)
     if t and t['cancel']:
-        s = 'are you sure you want to end task: #%s %s: %s' % (tid, t['domain'], t['message'])
+        s = 'are you sure you want to end task: #%s %s: %s' % (
+            tid,
+            t['domain'],
+            t['message'],
+        )
         if sublime.ok_cancel_dialog(s):
             t['cancel']()
 
@@ -1015,12 +1031,7 @@ except:
     sm_task_counter = 0
     sm_tasks = {}
     sm_frame = 0
-    sm_frames = (
-        u'\u25D2',
-        u'\u25D1',
-        u'\u25D3',
-        u'\u25D0'
-    )
+    sm_frames = (u'\u25D2', u'\u25D1', u'\u25D3', u'\u25D0')
     sm_tm = datetime.datetime.now()
     sm_text = ''
     sm_set_text = ''
@@ -1046,7 +1057,11 @@ def gs_init(m={}):
         LOGFILE = open(home_path('log.txt'), 'a+')
     except Exception as ex:
         LOGFILE = DEVNULL
-        notice(NAME, 'Cannot create log file. Remote(margo) and persistent logging will be disabled. Error: %s' % ex)
+        notice(
+            NAME,
+            'Cannot create log file. Remote(margo) and persistent logging will be disabled. Error: %s'
+            % ex,
+        )
 
     sched_sm_cb()
 

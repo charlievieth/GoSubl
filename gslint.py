@@ -12,6 +12,7 @@ import time
 DOMAIN = 'GsLint'
 CL_DOMAIN = 'GsCompLint'
 
+
 class FileRef(object):
     def __init__(self, view):
         self.view = view
@@ -20,11 +21,13 @@ class FileRef(object):
         self.state = 0
         self.reports = {}
 
+
 class Report(object):
     def __init__(self, row, col, msg):
         self.row = row
         self.col = col
         self.msg = msg
+
 
 class GsLintThread(threading.Thread):
     def __init__(self):
@@ -54,12 +57,15 @@ class GsLintThread(threading.Thread):
             fr = ref(fn, False)
             if fr:
                 reports = {}
-                res, _ = mg9.bcall('lint', {
-                    'dir': (os.path.dirname(fn) if fn else ''),
-                    'fn': fn,
-                    'src': fr.src,
-                    'filter': gs.setting('lint_filter', []),
-                })
+                res, _ = mg9.bcall(
+                    'lint',
+                    {
+                        'dir': (os.path.dirname(fn) if fn else ''),
+                        'fn': fn,
+                        'src': fr.src,
+                        'filter': gs.setting('lint_filter', []),
+                    },
+                )
                 res = gs.dval(res, {})
                 for r in gs.dval(res.get('reports'), []):
                     if fn and fn != '<stdin>' and r.get('Fn') != fn:
@@ -80,6 +86,7 @@ class GsLintThread(threading.Thread):
                         fr.reports = reports
                         file_refs[fn] = fr
 
+
 def highlight(fr):
     sel = gs.sel(fr.view).begin()
     row, _ = fr.view.rowcol(sel)
@@ -90,7 +97,7 @@ def highlight(fr):
 
         regions = []
         regions0 = []
-        domain0 = DOMAIN+'-zero'
+        domain0 = DOMAIN + '-zero'
         for r in fr.reports.values():
             line = fr.view.line(fr.view.text_point(r.row, 0))
             pos = line.begin() + r.col
@@ -102,7 +109,9 @@ def highlight(fr):
                 regions.append(sublime.Region(pos, pos))
 
         if regions:
-            fr.view.add_regions(DOMAIN, regions, 'comment', 'dot', sublime.DRAW_EMPTY_AS_OVERWRITE)
+            fr.view.add_regions(
+                DOMAIN, regions, 'comment', 'dot', sublime.DRAW_EMPTY_AS_OVERWRITE
+            )
         else:
             fr.view.erase_regions(DOMAIN)
 
@@ -125,10 +134,12 @@ def highlight(fr):
 
     fr.view.set_status(DOMAIN, msg)
 
+
 def cleanup(view):
     view.set_status(DOMAIN, '')
     view.erase_regions(DOMAIN)
-    view.erase_regions(DOMAIN+'-zero')
+    view.erase_regions(DOMAIN + '-zero')
+
 
 def watch():
     global file_refs
@@ -136,16 +147,17 @@ def watch():
 
     view = gs.active_valid_go_view()
 
-    if view is not None and (view.file_name() and gs.setting('comp_lint_enabled') is True):
+    if view is not None and (
+        view.file_name() and gs.setting('comp_lint_enabled') is True
+    ):
         fn = view.file_name()
         fr = ref(fn)
         with sem:
             if fr:
                 fr.view = view
                 highlight(fr)
-        sublime.set_timeout(watch, 150) # Previously 500
+        sublime.set_timeout(watch, 150)  # Previously 500
         return
-
 
     if gs.setting('gslint_enabled') is not True:
         if view:
@@ -154,7 +166,7 @@ def watch():
                     fr = file_refs[fn]
                     cleanup(fr.view)
                 file_refs = {}
-        sublime.set_timeout(watch, 150) # Previously 2000
+        sublime.set_timeout(watch, 150)  # Previously 2000
         return
 
     if view and not view.is_loading():
@@ -186,7 +198,8 @@ def watch():
                             th.start()
                         th.putq(fn)
 
-    sublime.set_timeout(watch, 150) # Previously 500
+    sublime.set_timeout(watch, 150)  # Previously 500
+
 
 def ref(fn, validate=True):
     with sem:
@@ -196,6 +209,7 @@ def ref(fn, validate=True):
                 if not fr.view.window() or fn != fr.view.file_name():
                     del file_refs[fn]
         return file_refs.get(fn)
+
 
 def delref(fn):
     with sem:
@@ -211,9 +225,7 @@ def do_comp_lint(dirname, fn):
 
     fn = gs.apath(fn, dirname)
     bindir, _ = gs.temp_dir('bin')
-    local_env = {
-        'GOBIN': bindir,
-    }
+    local_env = {'GOBIN': bindir}
 
     pat = r'%s:(\d+)(?:[:](\d+))?\W+(.+)\s*' % re.escape(os.path.basename(fn))
     pat = re.compile(pat, re.IGNORECASE)
@@ -235,8 +247,8 @@ def do_comp_lint(dirname, fn):
             for m in pat.findall(out):
                 try:
                     row, col, msg = m
-                    row = int(row)-1
-                    col = int(col)-1 if col else 0
+                    row = int(row) - 1
+                    col = int(col) - 1 if col else 0
                     msg = msg.replace('\\n', '\n').strip()
                     if row >= 0 and msg:
                         msg = '%s: %s' % (cmd_domain, msg)
@@ -254,7 +266,9 @@ def do_comp_lint(dirname, fn):
         fr.reports = reports
         fr.state = 1
         highlight(fr)
+
     sublime.set_timeout(cb, 0)
+
 
 class GsCompLintCommand(sublime_plugin.TextCommand):
     def run(self, edit):
@@ -268,6 +282,7 @@ class GsCompLintCommand(sublime_plugin.TextCommand):
             file_refs[fn] = FileRef(self.view)
             gsq.dispatch(CL_DOMAIN, lambda: do_comp_lint(dirname, fn), '')
 
+
 try:
     th
 except:
@@ -276,4 +291,3 @@ except:
     file_refs = {}
 
     watch()
-
