@@ -20,12 +20,11 @@ func (f *FormatRequest) Call() (interface{}, string) {
 		Comments:  true,
 		Fragment:  true,
 	}
-	var errStr string
 	out, err := imports.Process(f.Filename, []byte(f.Src), &opts)
 	if out == nil && err != nil {
-		errStr = err.Error()
+		return FormatResponse{Src: f.Src}, err.Error()
 	}
-	return FormatResponse{Src: string(out)}, errStr
+	return FormatResponse{Src: string(out)}, ""
 }
 
 func init() {
