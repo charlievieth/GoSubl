@@ -268,7 +268,6 @@ def do_comp_lint_2(dirname, filename):
             return
         reports = {}
         for rep in lint_reports:
-            # TODO: row - 1 and col - 1
             row = int(rep['row'])
             if row >= 0 and rep['msg']:
                 col = int(rep['col'])
@@ -278,10 +277,9 @@ def do_comp_lint_2(dirname, filename):
                     reports[row].col = max(reports[row].col, col)
                 else:
                     reports[row] = Report(row, col, msg)
-        if reports:
-            fileref.reports = reports
-            fileref.state = 1
-            highlight(fileref)
+        fileref.reports = reports
+        fileref.state = 1
+        highlight(fileref)
 
     req = {
         'filename': gs.apath(filename, dirname),

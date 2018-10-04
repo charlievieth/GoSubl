@@ -102,14 +102,21 @@ func (r *LintRequest) Lint() ([]LintReport, error) {
 				col = 1 // allow column to be missing
 			}
 			reports = append(reports, LintReport{
-				Row:     row,
-				Column:  col,
+				Row:     max(row-1, 0),
+				Column:  max(col-1, 0),
 				Message: string(bytes.TrimSpace(a[3])),
 			})
 		}
 	}
 
 	return reports, nil
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 func (r *LintRequest) Call() (interface{}, string) {
