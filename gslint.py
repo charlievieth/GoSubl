@@ -256,17 +256,65 @@ def do_comp_lint(dirname, fn):
         highlight(fr)
     sublime.set_timeout(cb, 0)
 
+
+def do_comp_lint_2(dirname, filename):
+    fileref = ref(filename, False)
+    if not fileref:
+        return
+
+    def callback(lint_reports, err):
+        if err:
+            gs.notice(DOMAIN, err)
+            return
+        reports = {}
+        for rep in lint_reports:
+            # TODO: row - 1 and col - 1
+            row = int(rep['row'])
+            if row >= 0 and rep['msg']:
+                col = int(rep['col'])
+                msg = 'go: {}'.format(rep['msg'])
+                if row in reports:
+                    reports[row].msg = '{}\n{}'.format(reports[row].msg, msg)
+                    reports[row].col = max(reports[row].col, col)
+                else:
+                    reports[row] = Report(row, col, msg)
+        if reports:
+            fileref.reports = reports
+            fileref.state = 1
+            highlight(fileref)
+
+    req = {
+        'filename': gs.apath(filename, dirname),
+        'dirname': dirname,
+        'env': {},  # TODO (CEV): use or remove
+    }
+    sublime.set_timeout(lambda: mg9.acall('complint', req, callback), 0)
+
+
 class GsCompLintCommand(sublime_plugin.TextCommand):
     def run(self, edit):
         if gs.setting('comp_lint_enabled') is not True:
             return
 
-        fn = self.view.file_name()
-        fn = os.path.abspath(fn)
-        if fn:
-            dirname = gs.basedir_or_cwd(fn)
-            file_refs[fn] = FileRef(self.view)
-            gsq.dispatch(CL_DOMAIN, lambda: do_comp_lint(dirname, fn), '')
+        filename = self.view.file_name()
+        filename = os.path.abspath(filename)
+        if filename:
+            dirname = gs.basedir_or_cwd(filename)
+            file_refs[filename] = FileRef(self.view)
+            do_comp_lint_2(dirname, filename)
+
+
+# class GsCompLintCommand(sublime_plugin.TextCommand):
+#     def run(self, edit):
+#         if gs.setting('comp_lint_enabled') is not True:
+#             return
+#
+#         fn = self.view.file_name()
+#         fn = os.path.abspath(fn)
+#         if fn:
+#             dirname = gs.basedir_or_cwd(fn)
+#             file_refs[fn] = FileRef(self.view)
+#             gsq.dispatch(CL_DOMAIN, lambda: do_comp_lint(dirname, fn), '')
 
 try:
     th

@@ -2,45 +2,36 @@ package main
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/charlievieth/buildutil"
 )
 
-var tempDirOnce sync.Once
-var tempGOBIN string
-
-func TempGOBIN() string {
-	tempDirOnce.Do(func() {
-		dir, err := ioutil.TempDir("", "margo_complint_")
-		if err != nil {
-			panic(err)
-		}
-		tempGOBIN = dir
-		byeDefer(func() {
-			os.RemoveAll(tempGOBIN)
-		})
-	})
-	return tempGOBIN
+type LintReport struct {
+	Row     int    `json:"row"`
+	Column  int    `json:"col"`
+	Message string `json:"msg"`
 }
 
+var NoLintReport = []LintReport{}
+
 type LintRequest struct {
-	Filename string
-	Env      map[string]string
+	Filename string            `json:"filename"`
+	Dirname  string            `json:"dirname"`
+	Env      map[string]string `json:"env"`
 }
 
 func (r *LintRequest) environment() []string {
 	env := os.Environ()
 	if len(r.Env) == 0 {
-		r.Env = make(map[string]string, len(env)+1)
-		r.Env["GOBIN"] = TempGOBIN()
+		return env
 	}
+	r.Env = make(map[string]string, len(env)+len(r.Env))
 	for _, s := range env {
 		if n := strings.IndexByte(s, '='); n != 0 {
 			key := s[:n]
@@ -49,7 +40,7 @@ func (r *LintRequest) environment() []string {
 			}
 		}
 	}
-	if n := len(r.Env); n > len(env) {
+	if n := len(r.Env); len(env) < n {
 		env = make([]string, 0, n)
 	} else {
 		env = env[:0]
@@ -64,12 +55,13 @@ func (r *LintRequest) TestPkg() bool {
 	return strings.HasSuffix(r.Filename, "_test.go")
 }
 
+// TODO (CEV): cache known main files
 func (r *LintRequest) MainPkg() bool {
 	name, err := buildutil.ReadPackageName(r.Filename, nil)
 	return err == nil && name == "main"
 }
 
-func (r *LintRequest) Call() (interface{}, string) {
+func (r *LintRequest) Lint() ([]LintReport, error) {
 	const pattern = `:(\d+)(?:[:](\d+))?\W+(.+)\s*`
 	var args []string
 	switch {
@@ -82,27 +74,57 @@ func (r *LintRequest) Call() (interface{}, string) {
 	}
 	// CEV: ignoring < go1.10 compatibility by adding '-i' flag
 
-	dir, file := filepath.Split(r.Filename)
-
-	re, err := regexp.Compile(regexp.QuoteMeta(file) + pattern)
+	// TODO: lazily initialize
+	re, err := regexp.Compile(regexp.QuoteMeta(filepath.Base(r.Filename)) + pattern)
 	if err != nil {
-		return LintReport{}, err.Error()
+		return nil, err
 	}
 
 	cmd := exec.Command("go", args...)
 	cmd.Env = r.environment()
-	cmd.Dir = filepath.Dir(dir)
-	out, _ := cmd.CombinedOutput()
+	cmd.Dir = r.Dirname
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		return nil, nil
+	}
+	out = bytes.TrimSpace(out)
+
+	var reports []LintReport
 	for _, line := range bytes.Split(out, []byte{'\n'}) {
-		line = bytes.TrimSpace(line)
-		re.Match(line) // WARN
+		// TODO: check if the line contains the file name
+		if a := re.FindSubmatch(line); len(a) == 4 {
+			row, err := strconv.Atoi(string(a[1]))
+			if err != nil {
+				continue // TODO: report
+			}
+			col, err := strconv.Atoi(string(a[2]))
+			if err != nil {
+				col = 1 // allow column to be missing
+			}
+			reports = append(reports, LintReport{
+				Row:     row,
+				Column:  col,
+				Message: string(bytes.TrimSpace(a[3])),
+			})
+		}
 	}
 
-	return nil, ""
+	return reports, nil
 }
 
-type LintReport struct {
-	Row     int    `json:"row"`
-	Column  int    `json:"col"`
-	Message string `json:"msg"`
+func (r *LintRequest) Call() (interface{}, string) {
+	rep, err := r.Lint()
+	if err != nil {
+		return NoLintReport, err.Error()
+	}
+	if rep == nil {
+		rep = NoLintReport
+	}
+	return rep, ""
+}
+
+func init() {
+	registry.Register("complint", func(*Broker) Caller {
+		return new(LintRequest)
+	})
 }
