@@ -204,6 +204,7 @@ def delref(fn):
 
 
 def do_comp_lint(dirname, fn):
+    # WARN (CEV): something here is broken
     fr = ref(fn, False)
     reports = {}
     if not fr:
@@ -235,8 +236,8 @@ def do_comp_lint(dirname, fn):
             for m in pat.findall(out):
                 try:
                     row, col, msg = m
-                    row = int(row)-1
-                    col = int(col)-1 if col else 0
+                    row = int(row) - 1
+                    col = int(col) - 1 if col else 0
                     msg = msg.replace('\\n', '\n').strip()
                     if row >= 0 and msg:
                         msg = '%s: %s' % (cmd_domain, msg)

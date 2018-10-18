@@ -19,9 +19,10 @@ SNIPPET_VAR_PAT = re.compile(r'\$\{([a-zA-Z]\w*)\}')
 
 HINT_KEY = '%s.completion-hint' % DOMAIN
 
+
 def snippet_match(ctx, m):
     try:
-        for k,p in m.get('match', {}).items():
+        for k, p in m.get('match', {}).items():
             q = ctx.get(k, '')
             if p and gs.is_a_string(p):
                 if not re.search(p, str(q)):
@@ -32,19 +33,21 @@ def snippet_match(ctx, m):
         gs.notice(DOMAIN, gs.traceback())
     return True
 
+
 def expand_snippet_vars(vars, text, title, value):
     sub = lambda m: vars.get(m.group(1), '')
     return (
         SNIPPET_VAR_PAT.sub(sub, text),
         SNIPPET_VAR_PAT.sub(sub, title),
-        SNIPPET_VAR_PAT.sub(sub, value)
+        SNIPPET_VAR_PAT.sub(sub, value),
     )
+
 
 def resolve_snippets(ctx):
     cl = set()
-    types = [''] if ctx.get('local') else ctx.get('types')
+    types = [''] if ctx.get('local') else ctx.get('types', [''])
     vars = {}
-    for k,v in ctx.items():
+    for k, v in ctx.items():
         if gs.is_a_string(v):
             vars[k] = v
 
@@ -78,6 +81,7 @@ def resolve_snippets(ctx):
     except:
         gs.notice(DOMAIN, gs.traceback())
     return list(cl)
+
 
 class GoSublime(sublime_plugin.EventListener):
     def on_query_completions(self, view, prefix, locations):
@@ -132,10 +136,10 @@ class GoSublime(sublime_plugin.EventListener):
         if not src:
             return ([], AC_OPTS)
 
-        nc = view.substr(sublime.Region(pos, pos+1))
+        nc = view.substr(sublime.Region(pos, pos + 1))
         cl = self.complete(fn, offset, src, nc.isalpha() or nc == "(")
 
-        pc = view.substr(sublime.Region(pos-1, pos))
+        pc = view.substr(sublime.Region(pos - 1, pos))
         if show_snippets and (pc.isspace() or pc.isalpha()):
             if scopes[-1] == 'source.go':
                 cl.extend(resolve_snippets(ctx))
