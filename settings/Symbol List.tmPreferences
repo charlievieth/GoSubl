@@ -4,7 +4,7 @@
 	<key>name</key>
 	<string>Symbol List</string>
 	<key>scope</key>
-	<string>meta.function.declaration.go - meta.function.declaration.anonymous.go, entity.name.type.go, entity.name.struct.go</string>
+	<string><![CDATA[source.go & (meta.function.declaration - meta.function.declaration.anonymous | entity.name.constant | entity.name.struct | entity.name.type | entity.name.function)]]></string>
 	<key>settings</key>
 	<dict>
 		<key>showInSymbolList</key>
@@ -12,3 +12,4 @@
 	</dict>
 </dict>
 </plist>
+
