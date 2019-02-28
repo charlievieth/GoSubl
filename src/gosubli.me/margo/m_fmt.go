@@ -1,6 +1,10 @@
 package main
 
-import "golang.org/x/tools/imports"
+import (
+	"fmt"
+
+	"golang.org/x/tools/imports"
+)
 
 type FormatRequest struct {
 	Filename  string `json:"Fn"`
@@ -13,7 +17,7 @@ type FormatResponse struct {
 	Src string `json:"src"`
 }
 
-func (f *FormatRequest) Call() (interface{}, string) {
+func (f *FormatRequest) doCall() (interface{}, string) {
 	opts := imports.Options{
 		TabWidth:  f.Tabwidth,
 		TabIndent: f.TabIndent,
@@ -25,6 +29,36 @@ func (f *FormatRequest) Call() (interface{}, string) {
 		return FormatResponse{Src: f.Src}, err.Error()
 	}
 	return FormatResponse{Src: string(out)}, ""
+}
+
+func (FormatRequest) errStr(err interface{}) string {
+	if err == nil {
+		return "panic: nil error!"
+	}
+	switch v := err.(type) {
+	case string:
+		return v
+	case error:
+		return v.Error()
+	case fmt.Stringer:
+		return v.String()
+	default:
+		return fmt.Sprintf("%#v", err)
+	}
+}
+
+func (f *FormatRequest) Call() (res interface{}, errStr string) {
+	defer func() {
+		if e := recover(); e != nil {
+			if errStr == "" {
+				errStr = f.errStr(e)
+			} else {
+				errStr += ": " + f.errStr(e)
+			}
+		}
+	}()
+	res, errStr = f.doCall()
+	return
 }
 
 func init() {
