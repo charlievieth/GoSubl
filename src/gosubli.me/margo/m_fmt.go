@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"golang.org/x/tools/imports"
+	"github.com/charlievieth/imports"
 )
 
 type FormatRequest struct {
