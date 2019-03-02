@@ -1,9 +1,6 @@
 from gosubl import gs
-from gosubl import gsq
-from gosubl import gsshell
 from gosubl import mg9
 import os
-import re
 import sublime
 import sublime_plugin
 import threading
@@ -197,65 +194,48 @@ def ref(fn, validate=True):
                     del file_refs[fn]
         return file_refs.get(fn)
 
-def delref(fn):
-    with sem:
-        if fn in file_refs:
-            del file_refs[fn]
 
-
-def do_comp_lint(dirname, fn):
-    # WARN (CEV): something here is broken
-    fr = ref(fn, False)
-    reports = {}
-    if not fr:
+def do_comp_lint_callback(res, err):
+    if err:
+        gs.notice(DOMAIN, err)
+    if 'filename' not in res:
+        gs.notice(DOMAIN, 'comp_lint: missing filename')
         return
 
-    fn = gs.apath(fn, dirname)
-    bindir, _ = gs.temp_dir('bin')
-    local_env = {
-        'GOBIN': bindir,
-    }
+    filename = res['filename']
+    fileref = ref(filename, False)
+    if not fileref:
+        return
 
-    pat = r'%s:(\d+)(?:[:](\d+))?\W+(.+)\s*' % re.escape(os.path.basename(fn))
-    pat = re.compile(pat, re.IGNORECASE)
-    for c in gs.setting('comp_lint_commands'):
+    reports = {}
+    if res.get('top_level_error', None):
+        gs.notice(DOMAIN, res['top_level_error'])
+        reports[0] = Report(row=0, col=0, msg=res['top_level_error'])
+
+    if 'errors' in res:
         try:
-            cmd = c.get('cmd')
-            if not cmd:
-                continue
-            cmd_domain = ' '.join(cmd)
-
-            shell = c.get('shell') is True
-            env = {} if c.get('global') is True else local_env
-            env['GOSUBL_LINT_FILENAME'] = fn
-            out, err, _ = gsshell.run(cmd=cmd, shell=shell, cwd=dirname, env=env)
-            if err:
-                gs.notice(DOMAIN, err)
-
-            out = out.replace('\r', '').replace('\n ', '\\n ').replace('\n\t', '\\n\t')
-            for m in pat.findall(out):
-                try:
-                    row, col, msg = m
-                    row = int(row) - 1
-                    col = int(col) - 1 if col else 0
-                    msg = msg.replace('\\n', '\n').strip()
-                    if row >= 0 and msg:
-                        msg = '%s: %s' % (cmd_domain, msg)
-                        if reports.get(row):
-                            reports[row].msg = '%s\n%s' % (reports[row].msg, msg)
-                            reports[row].col = max(reports[row].col, col)
-                        else:
-                            reports[row] = Report(row, col, msg)
-                except:
-                    pass
+            for rep in res.get('errors', []):
+                if rep['file'] != filename:
+                    continue
+                row = int(rep['row']) - 1
+                col = int(rep['col']) - 1
+                if col < 0:
+                    col = 0
+                msg = rep['message']
+                if row in reports:
+                    reports[row].msg = '%s\n%s' % (reports[row].msg, msg)
+                    reports[row].col = max(reports[row].col, col)
+                else:
+                    reports[row] = Report(row=row, col=col, msg=msg)
         except:
             gs.notice(DOMAIN, gs.traceback())
 
     def cb():
-        fr.reports = reports
-        fr.state = 1
-        highlight(fr)
+        fileref.reports = reports
+        fileref.state = 1
+        highlight(fileref)
     sublime.set_timeout(cb, 0)
+
 
 class GsCompLintCommand(sublime_plugin.TextCommand):
     def run(self, edit):
@@ -267,7 +247,8 @@ class GsCompLintCommand(sublime_plugin.TextCommand):
         if fn:
             dirname = gs.basedir_or_cwd(fn)
             file_refs[fn] = FileRef(self.view)
-            gsq.dispatch(CL_DOMAIN, lambda: do_comp_lint(dirname, fn), '')
+            mg9.acall('comp_lint', {'filename': fn}, do_comp_lint_callback)
+
 
 try:
     th
