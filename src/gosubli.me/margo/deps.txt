@@ -6,4 +6,4 @@ github.com/charlievieth/pkgs/...:b0984a0
 github.com/charlievieth/buildutil:66422ca
 github.com/charlievieth/goimporter/...:aece5f1
 golang.org/x/tools/...:f727befe
-github.com/charlievieth/imports/...:e362897
+github.com/charlievieth/imports/...:ae75193
