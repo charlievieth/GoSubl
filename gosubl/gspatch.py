@@ -1,6 +1,5 @@
 from gosubl import gs
 import sublime
-import sys
 
 if gs.PY3K:
     from something_borrowed.diff_match_patch.python3.diff_match_patch import (
@@ -49,12 +48,14 @@ def _merge(view, size, text, edit):
 
 
 def merge(view, size, text, edit):
-    vs = view.settings()
-    ttts = vs.get("translate_tabs_to_spaces")
-    vs.set("translate_tabs_to_spaces", False)
     origin_src = view.substr(sublime.Region(0, view.size()))
     if not origin_src.strip():
         return (False, "")
+
+    vs = view.settings()
+    ttts = vs.get("translate_tabs_to_spaces")
+    if ttts is True:
+        vs.set("translate_tabs_to_spaces", False)
 
     try:
         dirty = False
@@ -69,5 +70,6 @@ def merge(view, size, text, edit):
     except Exception as ex:
         err = "where ma bees at?: %s" % ex
     finally:
-        vs.set("translate_tabs_to_spaces", ttts)
+        if ttts is True:
+            vs.set("translate_tabs_to_spaces", ttts)
         return (dirty, err)
