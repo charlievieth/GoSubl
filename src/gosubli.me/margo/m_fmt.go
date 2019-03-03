@@ -13,10 +13,11 @@ import (
 )
 
 type FormatRequest struct {
-	Filename  string `json:"Fn"`
-	Src       string `json:"Src"`
-	TabIndent bool   `json:"TabIndent"`
-	Tabwidth  int    `json:"TabWidth"`
+	Filename   string `json:"Fn"`
+	Src        string `json:"Src"`
+	Tabwidth   int    `json:"TabWidth"`
+	TabIndent  bool   `json:"TabIndent"`
+	FormatOnly bool   `json:"FormatOnly"` // Disable the insertion and deletion of imports
 }
 
 type FormatResponse struct {
@@ -24,7 +25,7 @@ type FormatResponse struct {
 	NoChange bool   `json:"no_change"`
 }
 
-func (f *FormatRequest) doCall() (interface{}, string) {
+func (f *FormatRequest) doCall() (FormatResponse, string) {
 	opts := imports.Options{
 		TabWidth:    f.Tabwidth,
 		TabIndent:   f.TabIndent,
@@ -43,7 +44,30 @@ func (f *FormatRequest) doCall() (interface{}, string) {
 	return FormatResponse{Src: string(out)}, ""
 }
 
-func (f *FormatRequest) callTimeout() (interface{}, string) {
+func (f *FormatRequest) formatOnly() (*FormatResponse, error) {
+	src := []byte(f.Src)
+	fset := token.NewFileSet()
+	af, err := parser.ParseFile(fset, f.Filename, src, parser.ParseComments)
+	if err != nil && af == nil {
+		return nil, err
+	}
+	imports.Simplify(af)
+
+	cfg := printer.Config{
+		Mode:     printer.UseSpaces | printer.TabIndent,
+		Tabwidth: f.Tabwidth,
+	}
+	var buf bytes.Buffer
+	buf.Grow(len(src) + 512) // 512 is totally arbitrary, but seems about right
+
+	err = cfg.Fprint(&buf, fset, af)
+	if err != nil {
+		return nil, err
+	}
+	return nil, nil
+}
+
+func (f *FormatRequest) callTimeout() (FormatResponse, string) {
 	type Response struct {
 		Out []byte
 		Err error
@@ -101,7 +125,8 @@ func (f *FormatRequest) callTimeout() (interface{}, string) {
 			}()
 		}
 	}
-	return nil, "Timeout formatting file: " + time.Since(start).String()
+	return FormatResponse{NoChange: true}, "Timeout formatting file: " +
+		time.Since(start).String()
 }
 
 func (FormatRequest) errStr(err interface{}) string {
