@@ -274,7 +274,7 @@ def settings_dict():
 
 
 def setting(k, d=None):
-    return settings_dict().get(k, d)
+    return _settings.get(k, d)
 
 
 def println(*a):

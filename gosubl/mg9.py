@@ -399,8 +399,7 @@ def _complete_opts(fn, src, pos, builtins):
 
 
 def fmt(fn, src):
-    st = gs.settings_dict()
-    x = st.get("fmt_cmd")
+    x = gs.setting("fmt_cmd")
     if x:
         res, err = bcall(
             "sh",
@@ -413,8 +412,8 @@ def fmt(fn, src):
         {
             "Fn": fn or "",
             "Src": src or "",
-            "TabIndent": st.get("fmt_tab_indent"),
-            "TabWidth": st.get("fmt_tab_width"),
+            "TabIndent": gs.setting("fmt_tab_indent"),
+            "TabWidth": gs.setting("fmt_tab_width"),
         },
     )
     return res.get("src", ""), err
