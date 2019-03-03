@@ -3,6 +3,11 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"go/parser"
+	"go/printer"
+	"go/token"
+	"sync/atomic"
+	"time"
 
 	"github.com/charlievieth/imports"
 )
@@ -36,6 +41,67 @@ func (f *FormatRequest) doCall() (interface{}, string) {
 		return FormatResponse{NoChange: true}, ""
 	}
 	return FormatResponse{Src: string(out)}, ""
+}
+
+func (f *FormatRequest) callTimeout() (interface{}, string) {
+	type Response struct {
+		Out []byte
+		Err error
+	}
+	opts := imports.Options{
+		TabWidth:    f.Tabwidth,
+		TabIndent:   f.TabIndent,
+		Comments:    true,
+		Fragment:    true,
+		SimplifyAST: true,
+	}
+	start := time.Now()
+	src := []byte(f.Src)
+	ch := make(chan Response, 2)
+	go func() {
+		out, err := imports.Process(f.Filename, src, &opts)
+		ch <- Response{out, err}
+	}()
+
+	var done int64
+	timer := time.NewTimer(time.Millisecond * 500)
+	defer func() {
+		atomic.StoreInt64(&done, 1)
+		timer.Stop()
+	}()
+
+	for i := 0; i < 2; i++ {
+		select {
+		case res := <-ch:
+			if res.Out == nil && res.Err != nil {
+				return FormatResponse{NoChange: true}, res.Err.Error()
+			}
+			if bytes.Equal(src, res.Out) {
+				return FormatResponse{NoChange: true}, ""
+			}
+			return FormatResponse{Src: string(res.Out)}, ""
+		case <-timer.C:
+			go func() {
+				fset := token.NewFileSet()
+				af, err := parser.ParseFile(fset, f.Filename, src, parser.ParseComments)
+				if err != nil && af == nil {
+					ch <- Response{Err: err}
+					return
+				}
+				if atomic.LoadInt64(&done) != 0 {
+					return // bail
+				}
+				cfg := printer.Config{
+					Mode:     printer.UseSpaces | printer.TabIndent,
+					Tabwidth: f.Tabwidth,
+				}
+				var buf bytes.Buffer
+				cfg.Fprint(&buf, fset, af)
+				ch <- Response{buf.Bytes(), err}
+			}()
+		}
+	}
+	return nil, "Timeout formatting file: " + time.Since(start).String()
 }
 
 func (FormatRequest) errStr(err interface{}) string {
