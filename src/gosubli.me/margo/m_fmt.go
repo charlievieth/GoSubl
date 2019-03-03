@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/charlievieth/imports"
@@ -14,7 +15,8 @@ type FormatRequest struct {
 }
 
 type FormatResponse struct {
-	Src string `json:"src"`
+	Src      string `json:"src"`
+	NoChange bool   `json:"no_change"`
 }
 
 func (f *FormatRequest) doCall() (interface{}, string) {
@@ -24,9 +26,13 @@ func (f *FormatRequest) doCall() (interface{}, string) {
 		Comments:  true,
 		Fragment:  true,
 	}
-	out, err := imports.Process(f.Filename, []byte(f.Src), &opts)
+	src := []byte(f.Src)
+	out, err := imports.Process(f.Filename, src, &opts)
 	if out == nil && err != nil {
-		return FormatResponse{Src: f.Src}, err.Error()
+		return FormatResponse{NoChange: true}, err.Error()
+	}
+	if bytes.Equal(src, out) {
+		return FormatResponse{NoChange: true}, ""
 	}
 	return FormatResponse{Src: string(out)}, ""
 }

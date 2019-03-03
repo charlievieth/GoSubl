@@ -416,7 +416,7 @@ def fmt(fn, src):
             "TabWidth": gs.setting("fmt_tab_width"),
         },
     )
-    return res.get("src", ""), err
+    return res, err
 
 
 def import_paths(fn, src, f):

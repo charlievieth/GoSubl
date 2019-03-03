@@ -36,12 +36,16 @@ class GsFmtCommand(sublime_plugin.TextCommand):
         if not src.strip():
             return
 
-        src, err = mg9.fmt(self.view.file_name(), src)
+        res, err = mg9.fmt(self.view.file_name(), src)
         if err:
             gs.println(DOMAIN, "cannot fmt file. error: `%s'" % err)
             return
 
-        if not src.strip():
+        if res.get("no_change", False):
+            return
+
+        src = res.get("src", "").strip()
+        if not src:
             gs.println(DOMAIN, "cannot fmt file. it appears to be empty")
             return
 
