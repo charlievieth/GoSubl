@@ -12,34 +12,38 @@ import time
 import traceback
 
 DOMAIN = "GsShell"
-GO_RUN_PAT = re.compile(r'^go\s+(run|play)$', re.IGNORECASE)
-GO_SHARE_PAT = re.compile(r'^go\s+share$', re.IGNORECASE)
-GO_PLAY_PAT = re.compile(r'(\b)go\s+play(\b)', re.IGNORECASE)
+GO_RUN_PAT = re.compile(r"^go\s+(run|play)$", re.IGNORECASE)
+GO_SHARE_PAT = re.compile(r"^go\s+share$", re.IGNORECASE)
+GO_PLAY_PAT = re.compile(r"(\b)go\s+play(\b)", re.IGNORECASE)
+
 
 def command_on_output(c, line):
     c.outq().put(line)
 
+
 def command_on_done(c):
     pass
 
+
 def fix_env(env):
     e = {}
-    for k,v in env.items():
+    for k, v in env.items():
         e[k] = str(v)
     return e
+
 
 def fix_shell_cmd(shell, cmd):
     if not gs.is_a(cmd, []):
         cmd = [cmd]
 
     if shell:
-        cmd_str = ' '.join(cmd)
-        sh = gs.setting('shell')
+        cmd_str = " ".join(cmd)
+        sh = gs.setting("shell")
         if not sh:
             return (shell, gs.astr(cmd_str))
 
         shell = False
-        cmd_map = {'CMD': cmd_str}
+        cmd_map = {"CMD": cmd_str}
         cmd = []
         for v in sh:
             if v:
@@ -47,7 +51,18 @@ def fix_shell_cmd(shell, cmd):
 
     return (shell, [gs.astr(v) for v in cmd])
 
-def proc(cmd, shell=False, env={}, cwd=None, input=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE, bufsize=0):
+
+def proc(
+    cmd,
+    shell=False,
+    env={},
+    cwd=None,
+    input=None,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    stdin=subprocess.PIPE,
+    bufsize=0,
+):
     env = sh.env(env)
     shell, cmd = fix_shell_cmd(shell, cmd)
 
@@ -68,15 +83,10 @@ def proc(cmd, shell=False, env={}, cwd=None, input=None, stdout=subprocess.PIPE,
     except Exception:
         setsid = None
 
-    opts = {
-        'cmd': cmd,
-        'shell': shell,
-        'env': env,
-        'input': input,
-    }
+    opts = {"cmd": cmd, "shell": shell, "env": env, "input": input}
 
     p = None
-    err = ''
+    err = ""
     try:
         p = subprocess.Popen(
             cmd,
@@ -88,12 +98,13 @@ def proc(cmd, shell=False, env={}, cwd=None, input=None, stdout=subprocess.PIPE,
             env=env,
             cwd=cwd,
             preexec_fn=setsid,
-            bufsize=bufsize
+            bufsize=bufsize,
         )
     except Exception:
-        err = 'Error running command %s: %s' % (cmd, gs.traceback())
+        err = "Error running command %s: %s" % (cmd, gs.traceback())
 
     return (p, opts, err)
+
 
 def run(cmd=[], shell=False, env={}, cwd=None, input=None, stderr=subprocess.STDOUT):
     out = u""
@@ -101,15 +112,21 @@ def run(cmd=[], shell=False, env={}, cwd=None, input=None, stderr=subprocess.STD
     exc = None
 
     try:
-        p, opts, err = proc(cmd, input=input, shell=shell, stderr=stderr, env=env, cwd=cwd)
+        p, opts, err = proc(
+            cmd, input=input, shell=shell, stderr=stderr, env=env, cwd=cwd
+        )
         if p:
-            out, _ = p.communicate(input=opts.get('input'))
-            out = gs.ustr(out) if out else u''
+            out, _ = p.communicate(input=opts.get("input"))
+            out = gs.ustr(out) if out else u""
     except Exception as ex:
-        err = u'Error communicating with command %s: %s' % (opts.get('cmd'), gs.traceback())
+        err = u"Error communicating with command %s: %s" % (
+            opts.get("cmd"),
+            gs.traceback(),
+        )
         exc = ex
 
     return (out, err, exc)
+
 
 class CommandStdoutReader(threading.Thread):
     def __init__(self, c, stdout):
@@ -131,7 +148,7 @@ class CommandStdoutReader(threading.Thread):
                     self.c.output_started = time.time()
 
                 try:
-                    self.c.on_output(self.c, gs.ustr(line.rstrip('\r\n')))
+                    self.c.on_output(self.c, gs.ustr(line.rstrip("\r\n")))
                 except Exception:
                     gs.println(gs.traceback(DOMAIN))
         except Exception:
@@ -229,8 +246,14 @@ class Command(threading.Thread):
         tid = gs.begin(DOMAIN, self.message, set_status=False, cancel=self.cancel)
         try:
             try:
-                self.p = gs.popen(self.cmd, shell=self.shell, stderr=subprocess.STDOUT,
-                    environ=self.env, cwd=self.cwd, bufsize=1)
+                self.p = gs.popen(
+                    self.cmd,
+                    shell=self.shell,
+                    stderr=subprocess.STDOUT,
+                    environ=self.env,
+                    cwd=self.cwd,
+                    bufsize=1,
+                )
 
                 CommandStdoutReader(self, self.p.stdout).start()
             except Exception as ex:
@@ -247,6 +270,7 @@ class Command(threading.Thread):
                     f(self)
                 except Exception:
                     gs.notice(DOMAIN, gs.traceback())
+
 
 class ViewCommand(Command):
     def __init__(self, cmd=[], shell=False, env={}, cwd=None, view=None):
@@ -288,10 +312,9 @@ class ViewCommand(Command):
 
     def write_lines(self, view, lines):
         try:
-            view.run_command('gs_insert_content', {
-                'content': '\n'.join(lines),
-                'pos': view.size(),
-            })
+            view.run_command(
+                "gs_insert_content", {"content": "\n".join(lines), "pos": view.size()}
+            )
         except Exception:
             gs.println(gs.traceback(DOMAIN))
         view.show(view.line(view.size() - 1).begin())
@@ -299,11 +322,14 @@ class ViewCommand(Command):
     def on_output_done(self):
         ex = self.exception()
         if ex:
-            self.on_output(self, 'Error: ' % ex)
+            self.on_output(self, "Error: " % ex)
 
         if self.show_summary:
-            t = (max(0, self.ended - self.started), max(0, self.output_started - self.started))
-            self.do_insert(['[ elapsed: %0.3fs, startup: %0.3fs ]\n' % t])
+            t = (
+                max(0, self.ended - self.started),
+                max(0, self.output_started - self.started),
+            )
+            self.do_insert(["[ elapsed: %0.3fs, startup: %0.3fs ]\n" % t])
 
         for f in self.output_done:
             try:
@@ -314,7 +340,9 @@ class ViewCommand(Command):
     def cancel(self):
         discarded = super(ViewCommand, self).cancel()
         t = ((time.time() - self.started), discarded)
-        self.on_output(self, ('\n[ cancelled: elapsed: %0.3fs, discarded %d line(s) ]\n' % t))
+        self.on_output(
+            self, ("\n[ cancelled: elapsed: %0.3fs, discarded %d line(s) ]\n" % t)
+        )
 
     def run(self):
         sublime.set_timeout(self.poll_output, 0)

@@ -2,7 +2,8 @@ from gosubl import gs
 import sublime
 import threading
 
-DOMAIN = 'GsQ'
+DOMAIN = "GsQ"
+
 
 class Launcher(threading.Thread):
     def __init__(self, domain, f):
@@ -19,7 +20,7 @@ class Launcher(threading.Thread):
 
 
 class Runner(threading.Thread):
-    def __init__(self, domain, f, msg='', set_status=False):
+    def __init__(self, domain, f, msg="", set_status=False):
         threading.Thread.__init__(self)
         self.daemon = True
         self.domain = domain
@@ -30,7 +31,7 @@ class Runner(threading.Thread):
     def run(self):
         tid = gs.begin(self.domain, self.msg, self.set_status)
         try:
-            self.f() # WARN (CEV): Error
+            self.f()  # WARN (CEV): Error
         except Exception:
             gs.notice(self.domain, gs.traceback())
         finally:
@@ -72,7 +73,8 @@ try:
 except:
     m = {}
 
-def dispatch(domain, f, msg='', set_status=False):
+
+def dispatch(domain, f, msg="", set_status=False):
     global m
 
     q = m.get(domain, None)
@@ -84,7 +86,7 @@ def dispatch(domain, f, msg='', set_status=False):
     q.dispatch(f, msg, set_status)
 
 
-def do(domain, f, msg='', set_status=False):
+def do(domain, f, msg="", set_status=False):
     Runner(domain, f, msg, set_status).start()
 
 

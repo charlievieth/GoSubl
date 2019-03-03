@@ -6,17 +6,49 @@ from gosubl import mg9
 import sublime
 import sublime_plugin
 
-DOMAIN = 'GsDoc'
+DOMAIN = "GsDoc"
 
-GOOS_PAT = re.compile(r'_(%s)' % '|'.join(gs.GOOSES))
-GOARCH_PAT = re.compile(r'_(%s)' % '|'.join(gs.GOARCHES))
+GOOS_PAT = re.compile(r"_(%s)" % "|".join(gs.GOOSES))
+GOARCH_PAT = re.compile(r"_(%s)" % "|".join(gs.GOARCHES))
 
-EXT_EXCLUDE = frozenset([
-    '1', '2', '3', '7z', 'a', 'bak', 'bin', 'cache', 'com', 'cpu', 'db',
-    'dll', 'dynlib', 'exe', 'gif', 'gz', 'jpeg', 'jpg', 'lib', 'mem',
-    'o', 'old', 'out', 'png', 'pprof', 'prof', 'pyc', 'pyo', 'rar', 'so',
-    'swap', 'tar', 'tgz', 'zip',
-])
+EXT_EXCLUDE = frozenset(
+    [
+        "1",
+        "2",
+        "3",
+        "7z",
+        "a",
+        "bak",
+        "bin",
+        "cache",
+        "com",
+        "cpu",
+        "db",
+        "dll",
+        "dynlib",
+        "exe",
+        "gif",
+        "gz",
+        "jpeg",
+        "jpg",
+        "lib",
+        "mem",
+        "o",
+        "old",
+        "out",
+        "png",
+        "pprof",
+        "prof",
+        "pyc",
+        "pyo",
+        "rar",
+        "so",
+        "swap",
+        "tar",
+        "tgz",
+        "zip",
+    ]
+)
 
 
 class GsDocCommand(sublime_plugin.TextCommand):
@@ -24,66 +56,67 @@ class GsDocCommand(sublime_plugin.TextCommand):
         return gs.is_go_source_view(self.view)
 
     def show_output(self, s):
-        gs.show_output(DOMAIN+'-output', s, False, 'GsDoc')
+        gs.show_output(DOMAIN + "-output", s, False, "GsDoc")
 
     def goto_callback(self, docs, err):
         if err:
-            self.show_output('// Error: %s' % err)
-        elif len(docs) and 'fn' in docs[0]:
+            self.show_output("// Error: %s" % err)
+        elif len(docs) and "fn" in docs[0]:
             d = docs[0]
-            fn = d.get('fn', '')
-            row = d.get('row', 0)
-            col = d.get('col', 0)
-            gs.println('opening %s:%s:%s' % (fn, row, col))
+            fn = d.get("fn", "")
+            row = d.get("row", 0)
+            col = d.get("col", 0)
+            gs.println("opening %s:%s:%s" % (fn, row, col))
             gs.focus(fn, row, col)
         else:
             self.show_output("%s: cannot find definition" % DOMAIN)
 
     def parse_doc_hint(self, doc):
-        if 'name' not in doc:
+        if "name" not in doc:
             return None
-        if 'pkg' in doc:
-            name = '%s.%s' % (doc['pkg'], doc['name'])
+        if "pkg" in doc:
+            name = "%s.%s" % (doc["pkg"], doc["name"])
         else:
-            name = doc['name']
-        if 'src' in doc:
-            src = '\n//\n%s' % doc['src']
+            name = doc["name"]
+        if "src" in doc:
+            src = "\n//\n%s" % doc["src"]
         else:
-            src = ''
-        return '// %s %s%s' % (name, doc.get('kind', ''), src)
+            src = ""
+        return "// %s %s%s" % (name, doc.get("kind", ""), src)
 
     def hint_callback(self, docs, err):
         if err:
-            self.show_output('// Error: %s' % err)
+            self.show_output("// Error: %s" % err)
         elif docs:
-            results = [self.parse_doc_hint(d) for d in docs if 'name' in d]
+            results = [self.parse_doc_hint(d) for d in docs if "name" in d]
             if results:
-                self.show_output('\n\n\n'.join(results).strip())
+                self.show_output("\n\n\n".join(results).strip())
         self.show_output("// %s: no docs found" % DOMAIN)
 
-    def run(self, _, mode=''):
+    def run(self, _, mode=""):
         view = self.view
-        if (not gs.is_go_source_view(view)) or (mode not in ['goto', 'hint']):
+        if (not gs.is_go_source_view(view)) or (mode not in ["goto", "hint"]):
             return
 
         pt = gs.sel(view).begin()
         src = view.substr(sublime.Region(0, view.size()))
         pt = len(src[:pt].encode("utf-8"))
 
-        if mode == 'goto':
+        if mode == "goto":
             callback = self.goto_callback
-        elif mode == 'hint':
+        elif mode == "hint":
             callback = self.hint_callback
         mg9.doc(view.file_name(), src, pt, callback)
 
 
 class GsBrowseDeclarationsCommand(sublime_plugin.WindowCommand):
-    def run(self, dir=''):
-        if dir == '.':
+    def run(self, dir=""):
+        if dir == ".":
             self.present_current()
         elif dir:
-            self.present('', '', dir)
+            self.present("", "", dir)
         else:
+
             def f(res, err):
                 if err:
                     gs.notice(DOMAIN, err)
@@ -97,16 +130,16 @@ class GsBrowseDeclarationsCommand(sublime_plugin.WindowCommand):
                         if i == 0:
                             self.present_current()
                         elif i >= 1:
-                            self.present('', '', os.path.dirname(m[ents[i]]))
+                            self.present("", "", os.path.dirname(m[ents[i]]))
 
                     gs.show_quick_panel(ents, cb)
                 else:
-                    gs.show_quick_panel([['', 'No source directories found']])
+                    gs.show_quick_panel([["", "No source directories found"]])
 
             mg9.pkg_dirs(f)
 
     def present_current(self):
-        pkg_dir = ''
+        pkg_dir = ""
         view = gs.active_valid_go_view(win=self.window, strict=False)
         if view:
             if view.file_name():
@@ -114,8 +147,8 @@ class GsBrowseDeclarationsCommand(sublime_plugin.WindowCommand):
             vfn = gs.view_fn(view)
             src = gs.view_src(view)
         else:
-            vfn = ''
-            src = ''
+            vfn = ""
+            src = ""
         self.present(vfn, src, pkg_dir)
 
     def present(self, vfn, src, pkg_dir):
@@ -128,38 +161,39 @@ class GsBrowseDeclarationsCommand(sublime_plugin.WindowCommand):
                 gs.notify(DOMAIN, err)
                 return
 
-            decls = res.get('file_decls', [])
-            for d in res.get('pkg_decls', []):
-                if not vfn or d['fn'] != vfn:
+            decls = res.get("file_decls", [])
+            for d in res.get("pkg_decls", []):
+                if not vfn or d["fn"] != vfn:
                     decls.append(d)
 
             for d in decls:
-                dname = (d['repr'] or d['name'])
+                dname = d["repr"] or d["name"]
                 trailer = []
-                trailer.extend(GOOS_PAT.findall(d['fn']))
-                trailer.extend(GOARCH_PAT.findall(d['fn']))
+                trailer.extend(GOOS_PAT.findall(d["fn"]))
+                trailer.extend(GOARCH_PAT.findall(d["fn"]))
                 if trailer:
-                    trailer = ' (%s)' % ', '.join(trailer)
+                    trailer = " (%s)" % ", ".join(trailer)
                 else:
-                    trailer = ''
-                d['ent'] = '%s %s%s' % (d['kind'], dname, trailer)
+                    trailer = ""
+                d["ent"] = "%s %s%s" % (d["kind"], dname, trailer)
 
             ents = []
-            decls.sort(key=lambda d: d['ent'])
+            decls.sort(key=lambda d: d["ent"])
             for d in decls:
-                ents.append(d['ent'])
+                ents.append(d["ent"])
 
             def cb(i, win):
                 if i >= 0:
                     d = decls[i]
-                    gs.focus(d['fn'], d['row'], d['col'], win)
+                    gs.focus(d["fn"], d["row"], d["col"], win)
 
             if ents:
                 gs.show_quick_panel(ents, cb)
             else:
-                gs.show_quick_panel([['', 'No declarations found']])
+                gs.show_quick_panel([["", "No declarations found"]])
 
         mg9.declarations(vfn, src, pkg_dir, f)
+
 
 def handle_pkgdirs_res(res):
     m = {}
@@ -168,7 +202,7 @@ def handle_pkgdirs_res(res):
             if not m.get(dir):
                 m[dir] = fn
     ents = list(m.keys())
-    ents.sort(key = lambda a: a.lower())
+    ents.sort(key=lambda a: a.lower())
     return (ents, m)
 
 
@@ -181,13 +215,15 @@ class GsBrowsePackagesCommand(sublime_plugin.WindowCommand):
 
             ents, m = handle_pkgdirs_res(res)
             if ents:
+
                 def cb(i, win):
                     if i >= 0:
                         dirname = gs.basedir_or_cwd(m[ents[i]])
-                        win.run_command('gs_browse_files', {'dir': dirname})
+                        win.run_command("gs_browse_files", {"dir": dirname})
+
                 gs.show_quick_panel(ents, cb)
             else:
-                gs.show_quick_panel([['', 'No source directories found']])
+                gs.show_quick_panel([["", "No source directories found"]])
 
         mg9.pkg_dirs(f)
 
@@ -197,7 +233,7 @@ def ext_filter(pathname, basename, ext):
         return basename == "makefile"
     if ext in EXT_EXCLUDE:
         return False
-    if ext.endswith('~'):
+    if ext.endswith("~"):
         return False
     return True
 
@@ -208,15 +244,17 @@ def show_pkgfiles(dirname):
 
     try:
         dirname = os.path.abspath(dirname)
-        for fn in gs.list_dir_tree(dirname, ext_filter, gs.setting('fn_exclude_prefixes', [])):
-            name = os.path.relpath(fn, dirname).replace('\\', '/')
+        for fn in gs.list_dir_tree(
+            dirname, ext_filter, gs.setting("fn_exclude_prefixes", [])
+        ):
+            name = os.path.relpath(fn, dirname).replace("\\", "/")
             m[name] = fn
             ents.append(name)
     except Exception as ex:
-        gs.notice(DOMAIN, 'Error: %s' % ex)
+        gs.notice(DOMAIN, "Error: %s" % ex)
 
     if ents:
-        ents.sort(key = lambda a: a.lower())
+        ents.sort(key=lambda a: a.lower())
 
         try:
             s = " ../  ( current: %s )" % dirname
@@ -232,14 +270,17 @@ def show_pkgfiles(dirname):
                     win.run_command("gs_browse_files", {"dir": fn})
                 else:
                     gs.focus(fn, 0, 0, win)
+
         gs.show_quick_panel(ents, cb)
     else:
-        gs.show_quick_panel([['', 'No files found']])
+        gs.show_quick_panel([["", "No files found"]])
 
 
 class GsBrowseFilesCommand(sublime_plugin.WindowCommand):
-    def run(self, dir=''):
+    def run(self, dir=""):
         if not dir:
             view = self.window.active_view()
             dir = gs.basedir_or_cwd(view.file_name() if view is not None else None)
-        gsq.dispatch('*', lambda: show_pkgfiles(dir), 'scanning directory for package files')
+        gsq.dispatch(
+            "*", lambda: show_pkgfiles(dir), "scanning directory for package files"
+        )

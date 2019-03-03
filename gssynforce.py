@@ -4,24 +4,20 @@ import sublime_plugin
 
 # WARN (CEV): Update file paths
 def _stx(v):
-    old = [
-        'GoSublime.tmLanguage',
-        'GoSublime-next.tmLanguage',
-    ]
+    old = ["GoSublime.tmLanguage", "GoSublime-next.tmLanguage"]
 
-    fn = 'Packages/GoSubl/syntax/GoSublime-Go.tmLanguage'
-    if not os.path.exists(gs.dist_path('syntax/GoSublime-Go.tmLanguage')):
+    fn = "Packages/GoSubl/syntax/GoSublime-Go.tmLanguage"
+    if not os.path.exists(gs.dist_path("syntax/GoSublime-Go.tmLanguage")):
         return
 
-    stx = v.settings().get('syntax')
+    stx = v.settings().get("syntax")
     if stx:
-        name = stx.replace('\\', '/').split('/')[-1]
+        name = stx.replace("\\", "/").split("/")[-1]
         if name in old:
-            print('GoSublime: changing syntax of `%s` from `%s` to `%s`' % (
-                (v.file_name() or ('view://%s' % v.id())),
-                stx,
-                fn
-            ))
+            print(
+                "GoSublime: changing syntax of `%s` from `%s` to `%s`"
+                % ((v.file_name() or ("view://%s" % v.id())), stx, fn)
+            )
             v.set_syntax_file(fn)
 
 

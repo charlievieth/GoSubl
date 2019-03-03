@@ -16,9 +16,10 @@ try:
 except (AttributeError):
     STARTUPINFO = None
 
-Proc = namedtuple('Proc', 'p input orig_cmd cmd_lst env wd ok exc')
-Result = namedtuple('Result', 'out cmd_lst err ok exc')
+Proc = namedtuple("Proc", "p input orig_cmd cmd_lst env wd ok exc")
+Result = namedtuple("Result", "out cmd_lst err ok exc")
 psep = os.pathsep
+
 
 class _command(object):
     def __init__(self):
@@ -50,8 +51,8 @@ class _command(object):
         except Exception:
             setsid = None
 
-        out = ''
-        err = ''
+        out = ""
+        err = ""
         exc = None
 
         nv0 = {}
@@ -60,13 +61,13 @@ class _command(object):
 
         nv = env(nv0)
         nv.update(nv0)
-        cmd_lst = self.cmd(nv) # cmd is defined by child classes.
+        cmd_lst = self.cmd(nv)  # cmd is defined by child classes.
         orig_cmd = cmd_lst[0]
-        cmd_lst[0] = _which(orig_cmd, nv.get('PATH'))
+        cmd_lst[0] = _which(orig_cmd, nv.get("PATH"))
 
         try:
             if not cmd_lst[0]:
-                raise Exception('Cannot find command `%s`' % orig_cmd)
+                raise Exception("Cannot find command `%s`" % orig_cmd)
 
             p = subprocess.Popen(
                 cmd_lst,
@@ -78,7 +79,7 @@ class _command(object):
                 env=nv,
                 cwd=wd,
                 preexec_fn=setsid,
-                bufsize=0
+                bufsize=0,
             )
         except Exception as e:
             exc = e
@@ -92,17 +93,17 @@ class _command(object):
             env=nv,
             wd=wd,
             ok=(not exc),
-            exc=exc
+            exc=exc,
         )
 
     def run(self):
-        out = ''
-        err = ''
+        out = ""
+        err = ""
         exc = None
 
         pr = self.proc()
         if pr.ok:
-            ev.debug('sh.run', pr)
+            ev.debug("sh.run", pr)
 
             try:
                 out, err = pr.p.communicate(input=pr.input)
@@ -116,7 +117,7 @@ class _command(object):
             err=gs.ustr(err),
             cmd_lst=pr.cmd_lst,
             ok=(not exc),
-            exc=exc
+            exc=exc,
         )
 
 
@@ -143,30 +144,31 @@ def shl(m={}):
 
 
 def _shl(e):
-    l = gs.setting('shell', [])
+    l = gs.setting("shell", [])
     if not l:
-        fn = e.get('SHELL') or e.get('COMSPEC')
+        fn = e.get("SHELL") or e.get("COMSPEC")
         if fn:
             name, _ = os.path.splitext(os.path.basename(fn))
-            f = globals().get('_shl_%s' % name)
+            f = globals().get("_shl_%s" % name)
             if f:
                 l = f(fn)
 
     if not l:
         if gs.os_is_windows():
-            l = _shl_cmd('cmd')
+            l = _shl_cmd("cmd")
         else:
-            l = _shl_sh('sh')
+            l = _shl_sh("sh")
 
     return l
 
 
 def _shl_cmd(fn):
-    return [fn, '/C', '${CMD}']
+    return [fn, "/C", "${CMD}"]
 
 
 def _shl_sh(fn):
-    return [fn, '-l', '-c', '${CMD}']
+    return [fn, "-l", "-c", "${CMD}"]
+
 
 _shl_fish = _shl_sh
 _shl_bash = _shl_sh
@@ -179,7 +181,7 @@ def cmd(cmd_str, m={}):
 
 
 def _cmd(cmd_str, e):
-    cmdm = {'CMD': cmd_str}
+    cmdm = {"CMD": cmd_str}
     cmdl = []
     for s in _shl(e):
         s = string.Template(s).safe_substitute(cmdm)
@@ -198,85 +200,85 @@ def gs_init(_={}):
 
     start = time.time()
 
-    vars = [
-        'PATH',
-        'GOBIN',
-        'GOPATH',
-        'GOROOT',
-        'CGO_ENABLED',
-    ]
+    vars = ["PATH", "GOBIN", "GOPATH", "GOROOT", "CGO_ENABLED"]
 
     cmdl = []
     for k in vars:
-        cmdl.append('[[[$'+k+']]'+k+'[[%'+k+'%]]]')
-    cmd_str = 'echo "%s"' % ' '.join(cmdl)
+        cmdl.append("[[[$" + k + "]]" + k + "[[%" + k + "%]]]")
+    cmd_str = 'echo "%s"' % " ".join(cmdl)
 
     cr = ShellCommand(cmd_str).run()
     if cr.exc:
-        _print('error loading env vars: %s' % cr.exc)
+        _print("error loading env vars: %s" % cr.exc)
 
     out = cr.out + cr.err
 
-    mats = re.findall(r'\[\[\[(.*?)\]\](%s)\[\[(.*?)\]\]\]' % '|'.join(vars), out)
+    mats = re.findall(r"\[\[\[(.*?)\]\](%s)\[\[(.*?)\]\]\]" % "|".join(vars), out)
     for m in mats:
         a, k, b = m
-        v = ''
-        if a != '$'+k:
+        v = ""
+        if a != "$" + k:
             v = a
-        elif b != '%'+k+'%':
+        elif b != "%" + k + "%":
             v = b
 
         if v:
             _env_ext[k] = v
 
-    if not _env_ext.get('GOROOT'):
-        m = re.search(r'\bGOROOT=(.+)', go('env'))
+    if not _env_ext.get("GOROOT"):
+        m = re.search(r"\bGOROOT=(.+)", go("env"))
         if m:
-            _env_ext['GOROOT'] = m.group(1).strip('"')
+            _env_ext["GOROOT"] = m.group(1).strip('"')
 
     for k in _env_ext:
         v = os.environ.get(k)
         if v:
             _env_ext[k] = v
 
-    cr_go = go_cmd(['version']).run()
+    cr_go = go_cmd(["version"]).run()
     cr_go_out = cr_go.out + cr_go.err
     m = about.GO_VERSION_OUTPUT_PAT.search(cr_go_out)
     if m:
-        GO_VERSION = about.GO_VERSION_NORM_PAT.sub('', m.group(1))
-        VDIR_NAME = '%s_%s' % (about.VERSION, GO_VERSION)
+        GO_VERSION = about.GO_VERSION_NORM_PAT.sub("", m.group(1))
+        VDIR_NAME = "%s_%s" % (about.VERSION, GO_VERSION)
 
-    dur = (time.time() - start)
+    dur = time.time() - start
 
-    ev.debug('sh.init', {
-        'cr.init': cr,
-        'cr.go': cr_go,
-        'go_version': GO_VERSION,
-        'env': _env_ext,
-        'dur': dur,
-    })
+    ev.debug(
+        "sh.init",
+        {
+            "cr.init": cr,
+            "cr.go": cr_go,
+            "go_version": GO_VERSION,
+            "env": _env_ext,
+            "dur": dur,
+        },
+    )
 
     cmd_lst = []
     for v in cr.cmd_lst:
         v = v.replace(cmd_str, 'echo "..."')
         cmd_lst.append(v)
 
-    _print('load env vars %s: go version: %s -> `%s` -> `%s`: %0.3fs' % (
-        cmd_lst,
-        cr_go.cmd_lst,
-        cr_go_out,
-        (GO_VERSION if GO_VERSION != about.DEFAULT_GO_VERSION else cr_go),
-        dur,
-    ))
+    _print(
+        "load env vars %s: go version: %s -> `%s` -> `%s`: %0.3fs"
+        % (
+            cmd_lst,
+            cr_go.cmd_lst,
+            cr_go_out,
+            (GO_VERSION if GO_VERSION != about.DEFAULT_GO_VERSION else cr_go),
+            dur,
+        )
+    )
 
     init_done = True
 
 
 def _print(s):
-    print('GoSublime %s sh: %s' % (about.VERSION, s))
+    print("GoSublime %s sh: %s" % (about.VERSION, s))
 
 
-def getenv(name, default='', m={}):
+def getenv(name, default="", m={}):
     return env(m).get(name, default)
 
 
@@ -301,21 +303,26 @@ def env(m={}):
     e.update(_env_ext)
     e.update(m)
 
-    roots = [os.path.normpath(s) for s in gs.lst(e.get('GOPATH', '').split(psep), e.get('GOROOT', ''))]
-    e['GS_GOPATH'] = gs_gopath(gs.getwd(), roots) or gs_gopath(gs.attr('last_active_go_fn', ''), roots)
+    roots = [
+        os.path.normpath(s)
+        for s in gs.lst(e.get("GOPATH", "").split(psep), e.get("GOROOT", ""))
+    ]
+    e["GS_GOPATH"] = gs_gopath(gs.getwd(), roots) or gs_gopath(
+        gs.attr("last_active_go_fn", ""), roots
+    )
 
-    uenv = gs.setting('env', {})
+    uenv = gs.setting("env", {})
     for k in uenv:
         try:
             uenv[k] = string.Template(uenv[k]).safe_substitute(e)
         except Exception as ex:
-            gs.println('%s: Cannot expand env var `%s`: %s' % (NAME, k, ex))
+            gs.println("%s: Cannot expand env var `%s`: %s" % (NAME, k, ex))
 
     e.update(uenv)
     e.update(m)
 
-    if e['GS_GOPATH'] and gs.setting('use_gs_gopath') is True:
-        e['GOPATH'] = e['GS_GOPATH']
+    if e["GS_GOPATH"] and gs.setting("use_gs_gopath") is True:
+        e["GOPATH"] = e["GS_GOPATH"]
 
     # For custom values of GOPATH, installed binaries via go install
     # will go into the "bin" dir of the corresponding GOPATH path.
@@ -323,34 +330,30 @@ def env(m={}):
 
     add_path = [bin_dir()]
 
-    for s in gs.lst(e.get('GOROOT', ''), e.get('GOPATH', '').split(psep)):
+    for s in gs.lst(e.get("GOROOT", ""), e.get("GOPATH", "").split(psep)):
         if s:
-            s = os.path.join(s, 'bin')
+            s = os.path.join(s, "bin")
             if s not in add_path:
                 add_path.append(s)
 
-    gobin = e.get('GOBIN', '')
+    gobin = e.get("GOBIN", "")
     if gobin and gobin not in add_path:
         add_path.append(gobin)
 
-    for s in e.get('PATH', '').split(psep):
+    for s in e.get("PATH", "").split(psep):
         if s and s not in add_path:
             add_path.append(s)
 
     if gs.os_is_windows():
-        l = [
-            '~\\bin',
-            '~\\go\\bin',
-            'C:\\Go\\bin',
-        ]
+        l = ["~\\bin", "~\\go\\bin", "C:\\Go\\bin"]
     else:
         l = [
-            '~/bin',
-            '~/go/bin',
-            '/usr/local/go/bin',
-            '/usr/local/opt/go/bin',
-            '/usr/local/bin',
-            '/usr/bin',
+            "~/bin",
+            "~/go/bin",
+            "/usr/local/go/bin",
+            "/usr/local/opt/go/bin",
+            "/usr/local/bin",
+            "/usr/bin",
         ]
 
     for s in l:
@@ -358,18 +361,20 @@ def env(m={}):
         if s not in add_path:
             add_path.append(s)
 
-    e['PATH'] = psep.join(add_path)
+    e["PATH"] = psep.join(add_path)
 
-    fn = gs.attr('active_fn', '')
+    fn = gs.attr("active_fn", "")
     wd = gs.getwd()
 
-    e.update({
-        'PWD': wd,
-        '_wd': wd,
-        '_fn': fn,
-        '_vfn': gs.attr('active_vfn', ''),
-        '_nm': fn.replace('\\', '/').split('/')[-1],
-    })
+    e.update(
+        {
+            "PWD": wd,
+            "_wd": wd,
+            "_fn": fn,
+            "_vfn": gs.attr("active_vfn", ""),
+            "_nm": fn.replace("\\", "/").split("/")[-1],
+        }
+    )
 
     # Ensure no unicode objects leak through. The reason is twofold:
     #   * On Windows, Python 2.6 (used by Sublime Text) subprocess.Popen
@@ -383,7 +388,7 @@ def env(m={}):
         try:
             clean_env[gs.astr(k)] = gs.astr(v)
         except Exception as ex:
-            gs.println('%s: Bad env: %s' % (NAME, ex))
+            gs.println("%s: Bad env: %s" % (NAME, ex))
 
     return clean_env
 
@@ -400,18 +405,18 @@ def which_ok(fn):
 def which(cmd):
     """Locates program cmd in the user's path.
     """
-    return _which(cmd, getenv('PATH', ''))
+    return _which(cmd, getenv("PATH", ""))
 
 
 def _which(cmd, env_path):
     """Locates program cmd in path list env_path.
     """
     if os.path.isabs(cmd):
-        return cmd if which_ok(cmd) else ''
+        return cmd if which_ok(cmd) else ""
 
     # not supporting PATHEXT. period.
-    if gs.os_is_windows() and not cmd.endswith('.exe'):
-        cmd = '%s.exe' % cmd
+    if gs.os_is_windows() and not cmd.endswith(".exe"):
+        cmd = "%s.exe" % cmd
 
     seen = {}
     # psep is the OS path separator (os.pathsep).
@@ -421,19 +426,19 @@ def _which(cmd, env_path):
             return p
         seen[p] = True
 
-    return ''
+    return ""
 
 
 def go_cmd(cmd_lst):
-    go = which('go')
+    go = which("go")
     if go:
         return Command(gs.lst(go, cmd_lst))
-    return ShellCommand('go %s' % (' '.join(cmd_lst)))
+    return ShellCommand("go %s" % (" ".join(cmd_lst)))
 
 
 def go(cmd_lst):
     cr = go_cmd(cmd_lst).run()
-    out = cr.out.strip() + '\n' + cr.err.strip()
+    out = cr.out.strip() + "\n" + cr.err.strip()
     return out.strip()
 
 
@@ -448,18 +453,19 @@ def bin_dir():
         #   * ShellCommand calls env()
         #   * env() calls bin_dir()
         #   * we(bin_dir()) use GO_VERSION
-        return ''
+        return ""
 
-    return gs.home_dir_path(VDIR_NAME, 'bin')
+    return gs.home_dir_path(VDIR_NAME, "bin")
 
 
 def exe(nm):
     if gs.os_is_windows():
-        nm = '%s.exe' % nm
+        nm = "%s.exe" % nm
 
     return os.path.join(bin_dir(), nm)
 
+
 init_done = False
 GO_VERSION = about.DEFAULT_GO_VERSION
-VDIR_NAME = '%s_%s' % (about.VERSION, GO_VERSION)
+VDIR_NAME = "%s_%s" % (about.VERSION, GO_VERSION)
 _env_ext = {}

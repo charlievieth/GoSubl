@@ -15,9 +15,9 @@ import threading
 import time
 import uuid
 
-DOMAIN = 'MarGo'
-REQUEST_PREFIX = '%s.rqst.' % DOMAIN
-PROC_ATTR_NAME = 'mg9.proc'
+DOMAIN = "MarGo"
+REQUEST_PREFIX = "%s.rqst." % DOMAIN
+PROC_ATTR_NAME = "mg9.proc"
 TAG = about.VERSION
 INSTALL_VERSION = about.VERSION
 INSTALL_EXE = about.MARGO_EXE
@@ -38,61 +38,58 @@ def gs_init(m={}):
     # Kill server on process exit.
     atexit.register(killSrv)
 
-    version = m.get('version')
+    version = m.get("version")
     if version:
         INSTALL_VERSION = version
 
-    margo_exe = m.get('margo_exe')
+    margo_exe = m.get("margo_exe")
     if margo_exe:
         INSTALL_EXE = margo_exe
 
     force = about.FORCE_INSTALL is True
     # install_version recorded in 'GoSublime-aux.sublime-settings'
-    aso_install_vesion = gs.aso().get('install_version', '')
+    aso_install_vesion = gs.aso().get("install_version", "")
     f = lambda: install(aso_install_vesion, force)
     # GsQ handles threaded processes.
     # Install latest version.
-    gsq.do('GoSublime', f, msg='Installing MarGo', set_status=False)
+    gsq.do("GoSublime", f, msg="Installing MarGo", set_status=False)
 
 
 class Request(object):
-    def __init__(self, f, method='', token=''):
+    def __init__(self, f, method="", token=""):
         self.f = f
         self.tm = time.time()
         self.method = method
         if token:
             self.token = token
         else:
-            self.token = 'mg9.autoken.%s' % uuid.uuid4()
+            self.token = "mg9.autoken.%s" % uuid.uuid4()
 
     def header(self):
-        return {
-            'method': self.method,
-            'token': self.token,
-        }
+        return {"method": self.method, "token": self.token}
 
 
 def _inst_state():
     """Returns install state from gs.attr.
     """
     # TODO: Improve the handling of install state.
-    return gs.attr(_inst_name(), '')
+    return gs.attr(_inst_name(), "")
 
 
 def _inst_name():
     """Returns the install name for the install version.
     """
-    return 'mg9.install.%s' % INSTALL_VERSION
+    return "mg9.install.%s" % INSTALL_VERSION
 
 
 def _margo_src():
-    return gs.dist_path('margo9')
+    return gs.dist_path("margo9")
 
 
-def _margo_bin(exe=''):
+def _margo_bin(exe=""):
     """Returns the path of the margo executable.
     """
-    return gs.home_path('bin', exe or INSTALL_EXE)
+    return gs.home_path("bin", exe or INSTALL_EXE)
 
 
 def sanity_check_sl(sl):
@@ -100,47 +97,49 @@ def sanity_check_sl(sl):
     for p in sl:
         n = max(n, len(p[0]))
 
-    t = '%d' % n
-    t = '| %'+t+'s: %s'
-    indent = '| %s> ' % (' ' * n)
+    t = "%d" % n
+    t = "| %" + t + "s: %s"
+    indent = "| %s> " % (" " * n)
 
-    a = '~%s' % os.sep
+    a = "~%s" % os.sep
     b = os.path.expanduser(a)
 
-    return [t % (k, gs.ustr(v).replace(b, a).replace('\n', '\n%s' % indent)) for k,v in sl]
+    return [
+        t % (k, gs.ustr(v).replace(b, a).replace("\n", "\n%s" % indent)) for k, v in sl
+    ]
 
 
 def sanity_check(env={}, error_log=False):
     if not env:
         env = sh.env()
 
-    ns = '(not set)'
+    ns = "(not set)"
 
     sl = [
-        ('install state', _inst_state()),
-        ('sublime.version', sublime.version()),
-        ('sublime.channel', sublime.channel()),
-        ('about.ann', gs.attr('about.ann', '')),
-        ('about.version', gs.attr('about.version', '')),
-        ('version', about.VERSION),
-        ('platform', about.PLATFORM),
-        ('~bin', '%s' % gs.home_dir_path('bin')),
-        ('margo.exe', '%s (%s)' % _tp(_margo_bin())),
-        ('go.exe', '%s (%s)' % _tp(sh.which('go') or 'go')),
-        ('go.version', sh.GO_VERSION),
-        ('GOROOT', '%s' % env.get('GOROOT', ns)),
-        ('GOPATH', '%s' % env.get('GOPATH', ns)),
-        ('GOBIN', '%s (should usually be `%s`)' % (env.get('GOBIN', ns), ns)),
-        ('set.shell', str(gs.lst(gs.setting('shell')))),
-        ('env.shell', env.get('SHELL', '')),
-        ('shell.cmd', str(sh.cmd('${CMD}'))),
+        ("install state", _inst_state()),
+        ("sublime.version", sublime.version()),
+        ("sublime.channel", sublime.channel()),
+        ("about.ann", gs.attr("about.ann", "")),
+        ("about.version", gs.attr("about.version", "")),
+        ("version", about.VERSION),
+        ("platform", about.PLATFORM),
+        ("~bin", "%s" % gs.home_dir_path("bin")),
+        ("margo.exe", "%s (%s)" % _tp(_margo_bin())),
+        ("go.exe", "%s (%s)" % _tp(sh.which("go") or "go")),
+        ("go.version", sh.GO_VERSION),
+        ("GOROOT", "%s" % env.get("GOROOT", ns)),
+        ("GOPATH", "%s" % env.get("GOPATH", ns)),
+        ("GOBIN", "%s (should usually be `%s`)" % (env.get("GOBIN", ns), ns)),
+        ("set.shell", str(gs.lst(gs.setting("shell")))),
+        ("env.shell", env.get("SHELL", "")),
+        ("shell.cmd", str(sh.cmd("${CMD}"))),
     ]
 
     if error_log:
         try:
-            with open(gs.home_path('log.txt'), 'r') as f:
+            with open(gs.home_path("log.txt"), "r") as f:
                 s = f.read().strip()
-                sl.append(('error log', s))
+                sl.append(("error log", s))
         except Exception:
             pass
 
@@ -148,14 +147,14 @@ def sanity_check(env={}, error_log=False):
 
 
 def _sb(s):
-    bdir = gs.home_dir_path('bin')
+    bdir = gs.home_dir_path("bin")
     if s.startswith(bdir):
-        s = '~bin%s' % (s[len(bdir):])
+        s = "~bin%s" % (s[len(bdir) :])
     return s
 
 
 def _tp(s):
-    return (_sb(s), ('ok' if os.path.exists(s) else 'missing'))
+    return (_sb(s), ("ok" if os.path.exists(s) else "missing"))
 
 
 def _bins_exist():
@@ -165,8 +164,8 @@ def _bins_exist():
 def maybe_install():
     """Installs margo if installer is not busy or the binary does not exist.
     """
-    if _inst_state() == '' and not _bins_exist():
-        install('', True)
+    if _inst_state() == "" and not _bins_exist():
+        install("", True)
 
 
 def install(aso_install_vesion, force_install):
@@ -176,43 +175,49 @@ def install(aso_install_vesion, force_install):
     global INSTALL_EXE
 
     if _inst_state() != "":
-        gs.notify(DOMAIN, 'Installation aborted. Install command already called for GoSublime %s.' % INSTALL_VERSION)
+        gs.notify(
+            DOMAIN,
+            "Installation aborted. Install command already called for GoSublime %s."
+            % INSTALL_VERSION,
+        )
         return
 
-    INSTALL_EXE = INSTALL_EXE.replace('_%s.exe' % about.DEFAULT_GO_VERSION, '_%s.exe' % sh.GO_VERSION)
+    INSTALL_EXE = INSTALL_EXE.replace(
+        "_%s.exe" % about.DEFAULT_GO_VERSION, "_%s.exe" % sh.GO_VERSION
+    )
     about.MARGO_EXE = INSTALL_EXE
 
     is_update = about.VERSION != INSTALL_VERSION
 
-    gs.set_attr(_inst_name(), 'busy')
+    gs.set_attr(_inst_name(), "busy")
 
     init_start = time.time()
 
-    if not is_update and not force_install and _bins_exist() and aso_install_vesion == INSTALL_VERSION:
-        m_out = 'no'
+    if (
+        not is_update
+        and not force_install
+        and _bins_exist()
+        and aso_install_vesion == INSTALL_VERSION
+    ):
+        m_out = "no"
     else:
-        gs.notify('GoSublime', 'Installing MarGo')
+        gs.notify("GoSublime", "Installing MarGo")
         start = time.time()
 
         # WARN (CEV): Hard coded GOPATH
         # gopath = gs.dist_path() + os.pathsep + "/Users/Charlie/go"
-        gopath = gs.dist_path() + os.pathsep + sh.getenv('GOPATH')
+        gopath = gs.dist_path() + os.pathsep + sh.getenv("GOPATH")
 
-        cmd = sh.Command(['go', 'build', '-v', '-x', '-o', INSTALL_EXE, 'gosubli.me/margo'])
-        cmd.wd = gs.home_dir_path('bin')
-        cmd.env = {
-            'CGO_ENABLED': '0',
-            'GOBIN': '',
-            'GOPATH': gopath,
-        }
+        cmd = sh.Command(
+            ["go", "build", "-v", "-x", "-o", INSTALL_EXE, "gosubli.me/margo"]
+        )
+        cmd.wd = gs.home_dir_path("bin")
+        cmd.env = {"CGO_ENABLED": "0", "GOBIN": "", "GOPATH": gopath}
 
-        ev.debug('%s.build' % DOMAIN, {
-            'cmd': cmd.cmd_lst,
-            'cwd': cmd.wd,
-        })
+        ev.debug("%s.build" % DOMAIN, {"cmd": cmd.cmd_lst, "cwd": cmd.wd})
 
         cr = cmd.run()
-        m_out = 'cmd: `%s`\nstdout: `%s`\nstderr: `%s`\nexception: `%s`' % (
+        m_out = "cmd: `%s`\nstdout: `%s`\nstderr: `%s`\nexception: `%s`" % (
             cr.cmd_lst,
             cr.out.strip(),
             cr.err.strip(),
@@ -220,69 +225,83 @@ def install(aso_install_vesion, force_install):
         )
 
         if cr.ok and _bins_exist():
+
             def f():
-                gs.aso().set('install_version', INSTALL_VERSION)
+                gs.aso().set("install_version", INSTALL_VERSION)
                 gs.save_aso()
 
             sublime.set_timeout(f, 0)
         else:
-            err_prefix = 'MarGo build failed'
-            gs.error(DOMAIN, '%s\n%s' % (err_prefix, m_out))
+            err_prefix = "MarGo build failed"
+            gs.error(DOMAIN, "%s\n%s" % (err_prefix, m_out))
 
             sl = [
-                ('GoSublime error', '\n'.join((
-                    err_prefix,
-                    'This is possibly a bug or miss-configuration of your environment.',
-                    'For more help, please file an issue with the following build output',
-                    'at: https://github.com/DisposaBoy/GoSublime/issues/new',
-                    'or alternatively, you may send an email to: gosublime@dby.me',
-                    '\n',
-                    m_out,
-                )))
+                (
+                    "GoSublime error",
+                    "\n".join(
+                        (
+                            err_prefix,
+                            "This is possibly a bug or miss-configuration of your environment.",
+                            "For more help, please file an issue with the following build output",
+                            "at: https://github.com/DisposaBoy/GoSublime/issues/new",
+                            "or alternatively, you may send an email to: gosublime@dby.me",
+                            "\n",
+                            m_out,
+                        )
+                    ),
+                )
             ]
             sl.extend(sanity_check({}, False))
-            gs.show_output('GoSublime', '\n'.join(sanity_check_sl(sl)))
+            gs.show_output("GoSublime", "\n".join(sanity_check_sl(sl)))
 
-    gs.set_attr(_inst_name(), 'done')
+    gs.set_attr(_inst_name(), "done")
 
     if is_update:
-        gs.show_output('GoSublime-source', '\n'.join([
-            'GoSublime source has been updated.',
-            'New version: `%s`, current version: `%s`' % (INSTALL_VERSION, about.VERSION),
-            'Please restart Sublime Text to complete the update.',
-        ]))
+        gs.show_output(
+            "GoSublime-source",
+            "\n".join(
+                [
+                    "GoSublime source has been updated.",
+                    "New version: `%s`, current version: `%s`"
+                    % (INSTALL_VERSION, about.VERSION),
+                    "Please restart Sublime Text to complete the update.",
+                ]
+            ),
+        )
     else:
         e = sh.env()
-        a = [
-            'GoSublime init %s (%0.3fs)' % (INSTALL_VERSION, time.time() - init_start),
-        ]
+        a = ["GoSublime init %s (%0.3fs)" % (INSTALL_VERSION, time.time() - init_start)]
 
-        sl = [('install margo', m_out)]
+        sl = [("install margo", m_out)]
         sl.extend(sanity_check(e))
         a.extend(sanity_check_sl(sl))
         gs.println(*a)
 
-        missing = [k for k in ('GOROOT', 'GOPATH') if not e.get(k)]
+        missing = [k for k in ("GOROOT", "GOPATH") if not e.get(k)]
         if missing:
-            missing_message = '\n'.join([
-                'Missing required environment variables: %s' % ' '.join(missing),
-                'See the `Quirks` section of USAGE.md for info',
-            ])
+            missing_message = "\n".join(
+                [
+                    "Missing required environment variables: %s" % " ".join(missing),
+                    "See the `Quirks` section of USAGE.md for info",
+                ]
+            )
 
-            cb = lambda ok: gs.show_output(DOMAIN, missing_message, merge_domain=True, print_output=False)
+            cb = lambda ok: gs.show_output(
+                DOMAIN, missing_message, merge_domain=True, print_output=False
+            )
             gs.error(DOMAIN, missing_message)
-            gs.focus(gs.dist_path('USAGE.md'), focus_pat='^Quirks', cb=cb)
+            gs.focus(gs.dist_path("USAGE.md"), focus_pat="^Quirks", cb=cb)
 
         killSrv()
 
         start = time.time()
         # acall('ping', {}, lambda res, err: gs.println('MarGo Ready %0.3fs' % (time.time() - start)))
 
-        report_x = lambda: gs.println("GoSublime: Exception while cleaning up old binaries", gs.traceback())
+        report_x = lambda: gs.println(
+            "GoSublime: Exception while cleaning up old binaries", gs.traceback()
+        )
         try:
-            bin_dirs = [
-                gs.home_path('bin'),
-            ]
+            bin_dirs = [gs.home_path("bin")]
 
             l = []
             for d in bin_dirs:
@@ -308,10 +327,10 @@ class CalltipCache(object):
     def __init__(self):
         self.lck = threading.Lock()
         self.pos = 0
-        self.src = ''
-        self.fn = ''
+        self.src = ""
+        self.fn = ""
         self.res = []
-        self.err = ''
+        self.err = ""
 
     def get(self, fn, src, pos):
         with self.lck:
@@ -332,15 +351,15 @@ calltip_cache = CalltipCache()
 
 
 def calltip(fn, src, pos, quiet, f):
-    tid = ''
+    tid = ""
     if not quiet:
-        tid = gs.begin(DOMAIN, 'Fetching calltips')
+        tid = gs.begin(DOMAIN, "Fetching calltips")
 
     def cb(res, err):
         if tid:
             gs.end(tid)
 
-        res = gs.dval(res.get('Candidates'), [])
+        res = gs.dval(res.get("Candidates"), [])
         calltip_cache.set(fn, src, pos, res, err)
         f(res, err)
 
@@ -351,131 +370,148 @@ def calltip(fn, src, pos, quiet, f):
         f(res, err)
         return
 
-    return acall('gocode_calltip', _complete_opts(fn, src, pos, True), cb)
+    return acall("gocode_calltip", _complete_opts(fn, src, pos, True), cb)
 
 
 def complete(fn, src, pos):
-    builtins = (gs.setting('autocomplete_builtins') is True or gs.setting('complete_builtins') is True)
-    res, err = bcall('gocode_complete', _complete_opts(fn, src, pos, builtins))
-    res = gs.dval(res.get('Candidates'), [])
+    builtins = (
+        gs.setting("autocomplete_builtins") is True
+        or gs.setting("complete_builtins") is True
+    )
+    res, err = bcall("gocode_complete", _complete_opts(fn, src, pos, builtins))
+    res = gs.dval(res.get("Candidates"), [])
     return res, err
 
 
 def _complete_opts(fn, src, pos, builtins):
     nv = sh.env()
     return {
-        'Dir': gs.basedir_or_cwd(fn),
-        'Builtins': builtins,
-        'Fn':  fn or '',
-        'Src': src or '',
-        'Pos': pos or 0,
-        'Home': sh.vdir(),
-        'Autoinst': gs.setting('autoinst'),
-        'InstallSuffix': gs.setting('installsuffix', ''),
-        'Env': {
-            'GOROOT': nv.get('GOROOT', ''),
-            'GOPATH': nv.get('GOPATH', ''),
-        },
+        "Dir": gs.basedir_or_cwd(fn),
+        "Builtins": builtins,
+        "Fn": fn or "",
+        "Src": src or "",
+        "Pos": pos or 0,
+        "Home": sh.vdir(),
+        "Autoinst": gs.setting("autoinst"),
+        "InstallSuffix": gs.setting("installsuffix", ""),
+        "Env": {"GOROOT": nv.get("GOROOT", ""), "GOPATH": nv.get("GOPATH", "")},
     }
 
 
 def fmt(fn, src):
     st = gs.settings_dict()
-    x = st.get('fmt_cmd')
+    x = st.get("fmt_cmd")
     if x:
-        res, err = bcall('sh', {
-            'Env': sh.env(),
-            'Cmd': {
-                    'Name': x[0],
-                    'Args': x[1:],
-                    'Input': src or '',
-            },
-        })
-        return res.get('out', ''), (err or res.get('err', ''))
+        res, err = bcall(
+            "sh",
+            {"Env": sh.env(), "Cmd": {"Name": x[0], "Args": x[1:], "Input": src or ""}},
+        )
+        return res.get("out", ""), (err or res.get("err", ""))
 
-    res, err = bcall('fmt', {
-        'Fn': fn or '',
-        'Src': src or '',
-        'TabIndent': st.get('fmt_tab_indent'),
-        'TabWidth': st.get('fmt_tab_width'),
-    })
-    return res.get('src', ''), err
+    res, err = bcall(
+        "fmt",
+        {
+            "Fn": fn or "",
+            "Src": src or "",
+            "TabIndent": st.get("fmt_tab_indent"),
+            "TabWidth": st.get("fmt_tab_width"),
+        },
+    )
+    return res.get("src", ""), err
+
 
 def import_paths(fn, src, f):
-    tid = gs.begin(DOMAIN, 'Fetching import paths')
+    tid = gs.begin(DOMAIN, "Fetching import paths")
+
     def cb(res, err):
         gs.end(tid)
         f(res, err)
 
-    acall('import_paths', {
-        'fn': fn or '',
-        'src': src or '',
-        'env': sh.env(),
-        'InstallSuffix': gs.setting('installsuffix', ''),
-    }, cb)
+    acall(
+        "import_paths",
+        {
+            "fn": fn or "",
+            "src": src or "",
+            "env": sh.env(),
+            "InstallSuffix": gs.setting("installsuffix", ""),
+        },
+        cb,
+    )
+
 
 def pkg_name(fn, src):
-    res, err = bcall('pkg', {
-        'fn': fn or '',
-        'src': src or '',
-    })
-    return res.get('name'), err
+    res, err = bcall("pkg", {"fn": fn or "", "src": src or ""})
+    return res.get("name"), err
+
 
 def pkg_dirs(f):
-    tid = gs.begin(DOMAIN, 'Fetching pkg dirs')
+    tid = gs.begin(DOMAIN, "Fetching pkg dirs")
+
     def cb(res, err):
         gs.end(tid)
         f(res, err)
 
-    acall('pkg_dirs', {
-        'env': sh.env(),
-    }, cb)
+    acall("pkg_dirs", {"env": sh.env()}, cb)
+
 
 def declarations(fn, src, pkg_dir, f):
-    tid = gs.begin(DOMAIN, 'Fetching declarations')
+    tid = gs.begin(DOMAIN, "Fetching declarations")
+
     def cb(res, err):
         gs.end(tid)
         f(res, err)
 
-    return acall('declarations', {
-        'fn': fn or '',
-        'src': src,
-        'env': sh.env(),
-        'pkgDir': pkg_dir,
-    }, cb)
+    return acall(
+        "declarations",
+        {"fn": fn or "", "src": src, "env": sh.env(), "pkgDir": pkg_dir},
+        cb,
+    )
+
 
 def imports(fn, src, toggle):
-    return bcall('imports', {
-        'autoinst': gs.setting('autoinst'),
-        'env': sh.env(),
-        'fn': fn or '',
-        'src': src or '',
-        'toggle': toggle or [],
-        'tabIndent': gs.setting('fmt_tab_indent'),
-        'tabWidth': gs.setting('fmt_tab_width'),
-    })
+    return bcall(
+        "imports",
+        {
+            "autoinst": gs.setting("autoinst"),
+            "env": sh.env(),
+            "fn": fn or "",
+            "src": src or "",
+            "toggle": toggle or [],
+            "tabIndent": gs.setting("fmt_tab_indent"),
+            "tabWidth": gs.setting("fmt_tab_width"),
+        },
+    )
+
 
 def doc(fn, src, offset, f):
-    tid = gs.begin(DOMAIN, 'Fetching doc info')
+    tid = gs.begin(DOMAIN, "Fetching doc info")
+
     def cb(res, err):
         gs.end(tid)
         f(res, err)
 
-    acall('doc', {
-        'fn': fn or '',
-        'src': src or '',
-        'offset': offset or 0,
-        'env': sh.env(),
-        'tabIndent': gs.setting('fmt_tab_indent'),
-        'tabWidth': gs.setting('fmt_tab_width'),
-    }, cb)
+    acall(
+        "doc",
+        {
+            "fn": fn or "",
+            "src": src or "",
+            "offset": offset or 0,
+            "env": sh.env(),
+            "tabIndent": gs.setting("fmt_tab_indent"),
+            "tabWidth": gs.setting("fmt_tab_width"),
+        },
+        cb,
+    )
+
 
 def share(src, f):
-    warning = 'Are you sure you want to share this file. It will be public on play.golang.org'
+    warning = (
+        "Are you sure you want to share this file. It will be public on play.golang.org"
+    )
     if sublime.ok_cancel_dialog(warning):
-        acall('share', {'Src': src or ''}, f)
+        acall("share", {"Src": src or ""}, f)
     else:
-        f({}, 'Share cancelled')
+        f({}, "Share cancelled")
 
 
 def acall(method, arg, cb):
@@ -487,16 +523,16 @@ def acall(method, arg, cb):
 def bcall(method, arg):
     """Synchronous send to margo.
     """
-    if _inst_state() != 'done':
-        return {}, 'Blocking call(%s) aborted: Install is not done' % method
+    if _inst_state() != "done":
+        return {}, "Blocking call(%s) aborted: Install is not done" % method
 
     q = gs.queue.Queue()
-    acall(method, arg, lambda r,e: q.put((r, e)))
+    acall(method, arg, lambda r, e: q.put((r, e)))
     try:
-        res, err = q.get(True, gs.setting('ipc_timeout', 1))
+        res, err = q.get(True, gs.setting("ipc_timeout", 1))
         return res, err
     except:
-        return {}, 'Blocking Call(%s): Timeout' % method
+        return {}, "Blocking Call(%s): Timeout" % method
 
 
 def expand_jdata(v):
@@ -511,11 +547,11 @@ def expand_jdata(v):
         if gs.PY3K and isinstance(v, bytes):
             v = gs.ustr(v)
 
-        if gs.is_a_string(v) and v.startswith('base64:'):
+        if gs.is_a_string(v) and v.startswith("base64:"):
             try:
                 v = gs.ustr(base64.b64decode(v[7:]))
             except Exception:
-                v = ''
+                v = ""
                 gs.error_traceback(DOMAIN)
     return v
 
@@ -531,9 +567,9 @@ def _recv():
                 ln = ln.strip()
                 if ln:
                     r, _ = gs.json_decode(ln, {})
-                    token = r.get('token', '')
-                    tag = r.get('tag', '')
-                    k = REQUEST_PREFIX+token
+                    token = r.get("token", "")
+                    tag = r.get("tag", "")
+                    k = REQUEST_PREFIX + token
 
                     # TODO: try req = gs.del_attr(k)
                     req = gs.attr(k, {})
@@ -541,27 +577,37 @@ def _recv():
 
                     if req and req.f:
                         if tag != TAG:
-                            gs.notice(DOMAIN, "\n".join([
-                                "GoSublime/MarGo appears to be out-of-sync.",
-                                "Maybe restart Sublime Text.",
-                                "Received tag `%s', expected tag `%s'. " % (tag, TAG),
-                            ]))
+                            gs.notice(
+                                DOMAIN,
+                                "\n".join(
+                                    [
+                                        "GoSublime/MarGo appears to be out-of-sync.",
+                                        "Maybe restart Sublime Text.",
+                                        "Received tag `%s', expected tag `%s'. "
+                                        % (tag, TAG),
+                                    ]
+                                ),
+                            )
 
-                        err = r.get('error', '')
+                        err = r.get("error", "")
 
                         # TODO: Check if debug is enabled (len()).
-                        ev.debug(DOMAIN, "margo response: %s" % {
-                            'method': req.method,
-                            'tag': tag,
-                            'token': token,
-                            'dur': '%0.3fs' % (time.time() - req.tm),
-                            'err': err,
-                            'size': '%0.1fK' % (len(ln)/1024.0),
-                        })
+                        ev.debug(
+                            DOMAIN,
+                            "margo response: %s"
+                            % {
+                                "method": req.method,
+                                "tag": tag,
+                                "token": token,
+                                "dur": "%0.3fs" % (time.time() - req.tm),
+                                "err": err,
+                                "size": "%0.1fK" % (len(ln) / 1024.0),
+                            },
+                        )
 
                         # CEV: req.f is the callback 'cb' set in _send().
                         #
-                        dat = expand_jdata(r.get('data', {}))
+                        dat = expand_jdata(r.get("data", {}))
                         try:
                             # Add request back to the attr dict.
                             #
@@ -573,7 +619,7 @@ def _recv():
                         except Exception:
                             gs.error_traceback(DOMAIN)
                     else:
-                        ev.debug(DOMAIN, 'Ignoring margo: token: %s' % token)
+                        ev.debug(DOMAIN, "Ignoring margo: token: %s" % token)
             except Exception:
                 gs.println(gs.traceback())
         except Exception:
@@ -609,29 +655,29 @@ def _send():
                     mg_bin = _margo_bin()
                     cmd = [
                         mg_bin,
-                        '-oom', gs.setting('margo_oom', 0),
-                        '-poll', 30,
-                        '-tag', TAG,
+                        "-oom",
+                        gs.setting("margo_oom", 0),
+                        "-poll",
+                        30,
+                        "-tag",
+                        TAG,
                     ]
 
                     c = sh.Command(cmd)
                     c.stderr = gs.LOGFILE
-                    c.env = {
-                        'GOGC': 10,
-                        'XDG_CONFIG_HOME': gs.home_path(),
-                    }
+                    c.env = {"GOGC": 10, "XDG_CONFIG_HOME": gs.home_path()}
 
                     pr = c.proc()
                     if pr.ok:
                         proc = pr.p
-                        err = ''
+                        err = ""
                     else:
                         proc = None
-                        err = 'Exception: %s' % pr.exc
+                        err = "Exception: %s" % pr.exc
 
                     if err or not proc or proc.poll() is not None:
                         killSrv()
-                        _call(cb, {}, 'Abort. Cannot start MarGo: %s' % err)
+                        _call(cb, {}, "Abort. Cannot start MarGo: %s" % err)
 
                         continue
 
@@ -641,30 +687,30 @@ def _send():
                     gsq.launch(DOMAIN, lambda: _read_stdout(proc))
 
                 req = Request(f=cb, method=method)
-                gs.set_attr(REQUEST_PREFIX+req.token, req)
+                gs.set_attr(REQUEST_PREFIX + req.token, req)
 
                 header, err = gs.json_encode(req.header())
                 if err:
-                    _cb_err(cb, 'Failed to construct ipc header: %s' % err)
+                    _cb_err(cb, "Failed to construct ipc header: %s" % err)
                     continue
 
                 body, err = gs.json_encode(arg)
                 if err:
-                    _cb_err(cb, 'Failed to construct ipc body: %s' % err)
+                    _cb_err(cb, "Failed to construct ipc body: %s" % err)
                     continue
 
-                ev.debug(DOMAIN, 'margo request: %s ' % header)
+                ev.debug(DOMAIN, "margo request: %s " % header)
 
-                ln = '%s %s\n' % (header, body)
+                ln = "%s %s\n" % (header, body)
 
                 try:
                     if gs.PY3K:
-                        proc.stdin.write(bytes(ln, 'UTF-8'))
+                        proc.stdin.write(bytes(ln, "UTF-8"))
                     else:
                         proc.stdin.write(ln)
 
                 except Exception as ex:
-                    _cb_err(cb, 'Cannot talk to MarGo: %s' % err)
+                    _cb_err(cb, "Cannot talk to MarGo: %s" % err)
                     killSrv()
                     gs.println(gs.traceback())
 
@@ -724,31 +770,28 @@ def killSrv():
 
 def on(token, cb):
     req = Request(f=cb, token=token)
-    gs.set_attr(REQUEST_PREFIX+req.token, req)
+    gs.set_attr(REQUEST_PREFIX + req.token, req)
 
 
 def _dump(res, err):
-    gs.println(json.dumps({
-        'res': res,
-        'err': err,
-    }, sort_keys=True, indent=2))
+    gs.println(json.dumps({"res": res, "err": err}, sort_keys=True, indent=2))
 
 
 # WARN: module level
 #
 # Start send and recieve threads.
-if not gs.checked(DOMAIN, 'launch ipc threads'):
+if not gs.checked(DOMAIN, "launch ipc threads"):
     gsq.launch(DOMAIN, _send)
     gsq.launch(DOMAIN, _recv)
 
 
 def on_mg_msg(res, err):
-    msg = res.get('message', '')
+    msg = res.get("message", "")
     if msg:
-        print('GoSublime: MarGo: %s' % msg)
-        gs.notify('MarGo', msg)
+        print("GoSublime: MarGo: %s" % msg)
+        gs.notify("MarGo", msg)
     return True
 
 
 # WARN: module level
-on('margo.message', on_mg_msg)
+on("margo.message", on_mg_msg)

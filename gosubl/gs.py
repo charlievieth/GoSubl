@@ -20,10 +20,10 @@ try:
 except ImportError:
     import queue
 
-PY3K = (sys.version_info[0] == 3)
+PY3K = sys.version_info[0] == 3
 
 penc = locale.getpreferredencoding()
-try_encodings = ['utf-8']
+try_encodings = ["utf-8"]
 if penc.lower() not in try_encodings:
     try_encodings.append(penc)
 
@@ -39,7 +39,7 @@ try:
 except (AttributeError):
     STARTUP_INFO = None
 
-NAME = 'GoSubl'
+NAME = "GoSubl"
 
 mg9_send_q = queue.Queue()
 mg9_recv_q = queue.Queue()
@@ -101,67 +101,57 @@ _settings = copy.copy(_default_settings)
 
 
 CLASS_PREFIXES = {
-    'const': u'\u0196',
-    'func': u'\u0192',
-    'type': u'\u0288',
-    'var':  u'\u03BD',
-    'package': u'package \u03C1',
+    "const": u"\u0196",
+    "func": u"\u0192",
+    "type": u"\u0288",
+    "var": u"\u03BD",
+    "package": u"package \u03C1",
 }
 
-NAME_PREFIXES = {
-    'interface': u'\u00A1',
-}
+NAME_PREFIXES = {"interface": u"\u00A1"}
 
 # TODO: Update via margo
-GOARCHES = [
-    '386',
-    'amd64',
-    'arm',
-]
+GOARCHES = ["386", "amd64", "arm"]
 
 # TODO: Update via margo
-GOOSES = [
-    'darwin',
-    'freebsd',
-    'linux',
-    'netbsd',
-    'openbsd',
-    'plan9',
-    'windows',
-    'unix',
-]
+GOOSES = ["darwin", "freebsd", "linux", "netbsd", "openbsd", "plan9", "windows", "unix"]
 
 GOOSARCHES = []
 for s in GOOSES:
     for arch in GOARCHES:
-        GOOSARCHES.append('%s_%s' % (s, arch))
+        GOOSARCHES.append("%s_%s" % (s, arch))
 
-GOOSARCHES_PAT = re.compile(r'^(.+?)(?:_(%s))?(?:_(%s))?\.go$' % ('|'.join(GOOSES), '|'.join(GOARCHES)))
+GOOSARCHES_PAT = re.compile(
+    r"^(.+?)(?:_(%s))?(?:_(%s))?\.go$" % ("|".join(GOOSES), "|".join(GOARCHES))
+)
 
-IGNORED_SCOPES = frozenset([
-    'string.quoted.double.go',
-    'string.quoted.single.go',
-    'string.quoted.raw.go',
-    'comment.line.double-slash.go',
-    'comment.block.go',
+IGNORED_SCOPES = frozenset(
+    [
+        "string.quoted.double.go",
+        "string.quoted.single.go",
+        "string.quoted.raw.go",
+        "comment.line.double-slash.go",
+        "comment.block.go",
+        # gs-next
+        "comment.block.go",
+        "comment.line.double-slash.go",
+        "string.quoted.double.go",
+        "string.quoted.raw.go",
+        "constant.other.rune.go",
+    ]
+)
 
-    # gs-next
-    'comment.block.go',
-    'comment.line.double-slash.go',
-    'string.quoted.double.go',
-    'string.quoted.raw.go',
-    'constant.other.rune.go',
-])
+VFN_ID_PAT = re.compile(r"^(?:gs\.)?view://(\d+)(.*?)$", re.IGNORECASE)
+ROWCOL_PAT = re.compile(r"^[:]*(\d+)(?:[:](\d+))?[:]*$")
 
-VFN_ID_PAT = re.compile(r'^(?:gs\.)?view://(\d+)(.*?)$', re.IGNORECASE)
-ROWCOL_PAT = re.compile(r'^[:]*(\d+)(?:[:](\d+))?[:]*$')
-
-USER_DIR = os.path.expanduser('~')
-USER_DIR_PAT = re.compile(r'^%s/' % (re.escape(USER_DIR.replace('\\', '/').rstrip('/'))))
+USER_DIR = os.path.expanduser("~")
+USER_DIR_PAT = re.compile(
+    r"^%s/" % (re.escape(USER_DIR.replace("\\", "/").rstrip("/")))
+)
 
 
 def simple_fn(fn):
-    return USER_DIR_PAT.sub('~/', '%s/' % fn.replace('\\', '/').rstrip('/'))
+    return USER_DIR_PAT.sub("~/", "%s/" % fn.replace("\\", "/").rstrip("/"))
 
 
 def getwd():
@@ -178,9 +168,9 @@ def apath(fn, cwd=None):
     return os.path.normcase(os.path.normpath(fn))
 
 
-def temp_dir(subdir=''):
+def temp_dir(subdir=""):
     tmpdir = os.path.join(tempfile.gettempdir(), NAME, subdir)
-    err = ''
+    err = ""
     try:
         os.makedirs(tmpdir)
     except Exception as ex:
@@ -188,23 +178,25 @@ def temp_dir(subdir=''):
     return (tmpdir, err)
 
 
-def temp_file(suffix='', prefix='', delete=True):
+def temp_file(suffix="", prefix="", delete=True):
     try:
-        f = tempfile.NamedTemporaryFile(suffix=suffix, prefix=prefix, dir=temp_dir(), delete=delete)
+        f = tempfile.NamedTemporaryFile(
+            suffix=suffix, prefix=prefix, dir=temp_dir(), delete=delete
+        )
     except Exception as ex:
-        return (None, 'Error: %s' % ex)
-    return (f, '')
+        return (None, "Error: %s" % ex)
+    return (f, "")
 
 
 def basedir_or_cwd(fn):
-    if fn and not fn.startswith('gs.view://'):
+    if fn and not fn.startswith("gs.view://"):
         return os.path.dirname(fn)
     return getwd()
 
 
 def popen(args, stdout=PIPE, stderr=PIPE, shell=False, environ={}, cwd=None, bufsize=0):
     ev = env()
-    for k,v in environ.items():
+    for k, v in environ.items():
         ev[astr(k)] = astr(v)
 
     try:
@@ -212,8 +204,18 @@ def popen(args, stdout=PIPE, stderr=PIPE, shell=False, environ={}, cwd=None, buf
     except Exception:
         setsid = None
 
-    return Popen(args, stdout=stdout, stderr=stderr, stdin=PIPE, startupinfo=STARTUP_INFO,
-        shell=shell, env=ev, cwd=cwd, preexec_fn=setsid, bufsize=bufsize)
+    return Popen(
+        args,
+        stdout=stdout,
+        stderr=stderr,
+        stdin=PIPE,
+        startupinfo=STARTUP_INFO,
+        shell=shell,
+        env=ev,
+        cwd=cwd,
+        preexec_fn=setsid,
+        bufsize=bufsize,
+    )
 
 
 def is_a(v, base):
@@ -263,10 +265,10 @@ def settings_dict():
         if v is not None:
             m[k] = v
 
-    nv = dval(copy.copy(_settings.get('env')), {})
-    lpe = dval(attr('last_active_project_settings', {}).get('env'), {})
+    nv = dval(copy.copy(_settings.get("env")), {})
+    lpe = dval(attr("last_active_project_settings", {}).get("env"), {})
     nv.update(lpe)
-    m['env'] = nv
+    m["env"] = nv
 
     return m
 
@@ -277,21 +279,23 @@ def setting(k, d=None):
 
 def println(*a):
     l = []
-    l.append('\n** %s **:' % datetime.datetime.now())
+    l.append("\n** %s **:" % datetime.datetime.now())
     for s in a:
         l.append(ustr(s).strip())
-    l.append('--------------------------------')
+    l.append("--------------------------------")
 
-    l = '%s\n' % '\n'.join(l)
+    l = "%s\n" % "\n".join(l)
     print(l)
     return l
 
+
 def debug(domain, *a):
-    if setting('_debug') is True:
-        print('\n** DEBUG ** %s ** %s **:' % (domain, datetime.datetime.now()))
+    if setting("_debug") is True:
+        print("\n** DEBUG ** %s ** %s **:" % (domain, datetime.datetime.now()))
         for s in a:
             print(ustr(s).strip())
-        print('--------------------------------')
+        print("--------------------------------")
+
 
 def log(*a):
     try:
@@ -316,13 +320,13 @@ def error(domain, txt):
     status_message(txt)
 
 
-def error_traceback(domain, status_txt=''):
+def error_traceback(domain, status_txt=""):
     tb = traceback().strip()
     if status_txt:
-        prefix = '%s\n' % status_txt
+        prefix = "%s\n" % status_txt
     else:
-        prefix = ''
-        i = tb.rfind('\n')
+        prefix = ""
+        i = tb.rfind("\n")
         if i > 0:
             status_txt = tb[i:].strip()
         else:
@@ -335,29 +339,41 @@ def error_traceback(domain, status_txt=''):
 def notice_undo(domain, txt, view, should_undo):
     def cb():
         if should_undo:
-            view.run_command('undo')
+            view.run_command("undo")
         notice(domain, txt)
+
     sublime.set_timeout(cb, 0)
 
 
-def show_output(domain, s, print_output=True, syntax_file='', replace=True, merge_domain=False, scroll_end=False):
+def show_output(
+    domain,
+    s,
+    print_output=True,
+    syntax_file="",
+    replace=True,
+    merge_domain=False,
+    scroll_end=False,
+):
     def cb(domain, s, print_output, syntax_file):
-        panel_name = '%s-output' % domain
+        panel_name = "%s-output" % domain
         if merge_domain:
-            s = '%s: %s' % (domain, s)
+            s = "%s: %s" % (domain, s)
             if print_output:
                 println(s)
         elif print_output:
-            println('%s: %s' % (domain, s))
+            println("%s: %s" % (domain, s))
 
         win = sublime.active_window()
         if win:
-            win.get_output_panel(panel_name).run_command('gs_set_output_panel_content', {
-                'content': s,
-                'syntax_file': syntax_file,
-                'scroll_end': scroll_end,
-                'replace': replace,
-            })
+            win.get_output_panel(panel_name).run_command(
+                "gs_set_output_panel_content",
+                {
+                    "content": s,
+                    "syntax_file": syntax_file,
+                    "scroll_end": scroll_end,
+                    "replace": replace,
+                },
+            )
             win.run_command("show_panel", {"panel": "output.%s" % panel_name})
 
     sublime.set_timeout(lambda: cb(domain, s, print_output, syntax_file), 0)
@@ -372,15 +388,15 @@ def is_go_source_view(view=None, strict=True):
     if view is None:
         return False
 
-    selector_match = view.score_selector(sel(view).begin(), 'source.go') > 0
+    selector_match = view.score_selector(sel(view).begin(), "source.go") > 0
     if selector_match:
         return True
 
     if strict:
         return False
 
-    fn = view.file_name() or ''
-    return fn.endswith('.go')
+    fn = view.file_name() or ""
+    return fn.endswith(".go")
 
 
 def active_valid_go_view(win=None, strict=True):
@@ -401,7 +417,7 @@ def os_is_windows():
     return os.name == "nt"
 
 
-def getenv(name, default='', m={}):
+def getenv(name, default="", m={}):
     return env(m).get(name, default)
 
 
@@ -414,8 +430,8 @@ def env(m={}):
     e.update(environ9)
     e.update(m)
 
-    roots = lst(e.get('GOPATH', '').split(os.pathsep), e.get('GOROOT', ''))
-    lfn = attr('last_active_go_fn', '')
+    roots = lst(e.get("GOPATH", "").split(os.pathsep), e.get("GOROOT", ""))
+    lfn = attr("last_active_go_fn", "")
     comps = lfn.split(os.sep)
     gs_gopath = []
     for i, s in enumerate(comps):
@@ -424,14 +440,14 @@ def env(m={}):
             if p not in roots:
                 gs_gopath.append(p)
     gs_gopath.reverse()
-    e['GS_GOPATH'] = os.pathsep.join(gs_gopath)
+    e["GS_GOPATH"] = os.pathsep.join(gs_gopath)
 
-    uenv = setting('env', {})
+    uenv = setting("env", {})
     for k in uenv:
         try:
             uenv[k] = string.Template(uenv[k]).safe_substitute(e)
         except Exception as ex:
-            println('%s: Cannot expand env var `%s`: %s' % (NAME, k, ex))
+            println("%s: Cannot expand env var `%s`: %s" % (NAME, k, ex))
 
     e.update(uenv)
     e.update(m)
@@ -440,32 +456,28 @@ def env(m={}):
     # will go into the "bin" dir of the corresponding GOPATH path.
     # Therefore, make sure these paths are included in PATH.
 
-    add_path = [home_dir_path('bin')]
+    add_path = [home_dir_path("bin")]
 
-    for s in lst(e.get('GOROOT', ''), e.get('GOPATH', '').split(os.pathsep)):
+    for s in lst(e.get("GOROOT", ""), e.get("GOPATH", "").split(os.pathsep)):
         if s:
-            s = os.path.join(s, 'bin')
+            s = os.path.join(s, "bin")
             if s not in add_path:
                 add_path.append(s)
 
-    gobin = e.get('GOBIN', '')
+    gobin = e.get("GOBIN", "")
     if gobin and gobin not in add_path:
         add_path.append(gobin)
 
     if os_is_windows():
-        l = [
-            '~\\bin',
-            '~\\go\\bin',
-            'C:\\Go\\bin',
-        ]
+        l = ["~\\bin", "~\\go\\bin", "C:\\Go\\bin"]
     else:
         l = [
-            '~/bin',
-            '~/go/bin',
-            '/usr/local/go/bin',
-            '/usr/local/opt/go/bin',
-            '/usr/local/bin',
-            '/usr/bin',
+            "~/bin",
+            "~/go/bin",
+            "/usr/local/go/bin",
+            "/usr/local/opt/go/bin",
+            "/usr/local/bin",
+            "/usr/bin",
         ]
 
     for s in l:
@@ -473,12 +485,11 @@ def env(m={}):
         if s not in add_path:
             add_path.append(s)
 
-    for s in e.get('PATH', '').split(os.pathsep):
+    for s in e.get("PATH", "").split(os.pathsep):
         if s and s not in add_path:
             add_path.append(s)
 
-
-    e['PATH'] = os.pathsep.join(add_path)
+    e["PATH"] = os.pathsep.join(add_path)
 
     # Ensure no unicode objects leak through. The reason is twofold:
     #   * On Windows, Python 2.6 (used by Sublime Text) subprocess.Popen
@@ -492,9 +503,10 @@ def env(m={}):
         try:
             clean_env[astr(k)] = astr(v)
         except Exception as ex:
-            println('%s: Bad env: %s' % (NAME, ex))
+            println("%s: Bad env: %s" % (NAME, ex))
 
     return clean_env
+
 
 def mirror_settings(so):
     m = {}
@@ -528,8 +540,8 @@ def view_fn(view):
     if view is not None:
         if view.file_name():
             return view.file_name()
-        return 'gs.view://%s' % view.id()
-    return ''
+        return "gs.view://%s" % view.id()
+    return ""
 
 
 def view_src(view):
@@ -537,7 +549,7 @@ def view_src(view):
     """
     if view:
         return view.substr(sublime.Region(0, view.size()))
-    return ''
+    return ""
 
 
 def win_view(vfn=None, win=None):
@@ -559,7 +571,7 @@ def win_view(vfn=None, win=None):
 
     view = None
     if win:
-        m = VFN_ID_PAT.match(vfn or '')
+        m = VFN_ID_PAT.match(vfn or "")
         if m:
             try:
                 vid = int(m.group(1))
@@ -579,7 +591,7 @@ def win_view(vfn=None, win=None):
 def do_focus(fn, row, col, win, focus_pat, cb):
     win, view = win_view(fn, win)
     if win is None or view is None:
-        notify(NAME, 'Cannot find file position %s:%s:%s' % (fn, row, col))
+        notify(NAME, "Cannot find file position %s:%s:%s" % (fn, row, col))
         if cb:
             cb(False)
     elif view.is_loading():
@@ -590,12 +602,12 @@ def do_focus(fn, row, col, win, focus_pat, cb):
             r = view.find(focus_pat, 0)
             if r:
                 row, col = view.rowcol(r.begin())
-        view.run_command("gs_goto_row_col", { "row": row, "col": col })
+        view.run_command("gs_goto_row_col", {"row": row, "col": col})
         if cb:
             cb(True)
 
 
-def focus(fn, row=0, col=0, win=None, timeout=100, focus_pat='^package ', cb=None):
+def focus(fn, row=0, col=0, win=None, timeout=100, focus_pat="^package ", cb=None):
     sublime.set_timeout(lambda: do_focus(fn, row, col, win, focus_pat, cb), timeout)
 
 
@@ -609,18 +621,18 @@ def sm_cb():
         tm = sm_tm
         s = sm_text
         if s:
-            delta = (datetime.datetime.now() - tm)
+            delta = datetime.datetime.now() - tm
             if delta.seconds >= 10:
-                sm_text = ''
+                sm_text = ""
 
     if ntasks > 0:
         if s:
-            s = u'%s, %s' % (sm_frames[sm_frame], s)
+            s = u"%s, %s" % (sm_frames[sm_frame], s)
         else:
-            s = u'%s' % sm_frames[sm_frame]
+            s = u"%s" % sm_frames[sm_frame]
 
         if ntasks > 1:
-            s = '%d %s' % (ntasks, s)
+            s = "%d %s" % (ntasks, s)
 
         sm_frame = (sm_frame + 1) % len(sm_frames)
 
@@ -648,16 +660,16 @@ def begin(domain, message, set_status=True, cancel=None):
     global sm_task_counter
 
     if message and set_status:
-        status_message('%s: %s' % (domain, message))
+        status_message("%s: %s" % (domain, message))
 
     with sm_lck:
         sm_task_counter += 1
-        tid = 't%d' % sm_task_counter
+        tid = "t%d" % sm_task_counter
         sm_tasks[tid] = {
-            'start': datetime.datetime.now(),
-            'domain': domain,
-            'message': message,
-            'cancel': cancel,
+            "start": datetime.datetime.now(),
+            "domain": domain,
+            "message": message,
+            "cancel": cancel,
         }
 
     return tid
@@ -686,10 +698,14 @@ def task_list():
 
 def cancel_task(tid):
     t = task(tid)
-    if t and t['cancel']:
-        s = 'are you sure you want to end task: #%s %s: %s' % (tid, t['domain'], t['message'])
+    if t and t["cancel"]:
+        s = "are you sure you want to end task: #%s %s: %s" % (
+            tid,
+            t["domain"],
+            t["message"],
+        )
         if sublime.ok_cancel_dialog(s):
-            t['cancel']()
+            t["cancel"]()
 
         return True
     return False
@@ -711,11 +727,11 @@ def show_quick_panel(items, cb=None):
 
 def go_env_goroot():
     # WARN: Appears broken and not used - REMOVE.
-    out, _, _ = runcmd(['go env GOROOT'], shell=True)
-    return out.strip().encode('utf-8')
+    out, _, _ = runcmd(["go env GOROOT"], shell=True)
+    return out.strip().encode("utf-8")
 
 
-def list_dir_tree(dirname, filter, exclude_prefix=('.', '_')):
+def list_dir_tree(dirname, filter, exclude_prefix=(".", "_")):
     lst = []
 
     try:
@@ -732,7 +748,7 @@ def list_dir_tree(dirname, filter, exclude_prefix=('.', '_')):
                 if filter:
                     pathname = fn.lower()
                     _, ext = os.path.splitext(basename)
-                    ext = ext.lstrip('.')
+                    ext = ext.lstrip(".")
                     if filter(pathname, basename, ext):
                         lst.append(fn)
                 else:
@@ -743,10 +759,10 @@ def list_dir_tree(dirname, filter, exclude_prefix=('.', '_')):
     return lst
 
 
-def traceback(domain='GoSublime'):
+def traceback(domain="GoSublime"):
     """Returns a traceback formatted as 'domain: traceback'.
     """
-    return '%s: %s' % (domain, tbck.format_exc())
+    return "%s: %s" % (domain, tbck.format_exc())
 
 
 def show_traceback(domain):
@@ -778,11 +794,11 @@ def ustr(s):
     # try_encodings == 'utf-8' and locale.getpreferredencoding() if not 'utf-8'
     for e in try_encodings:
         try:
-            return str_decode(s, e, 'strict')
+            return str_decode(s, e, "strict")
         except UnicodeDecodeError:
             continue
 
-    return str_decode(s, 'utf-8', 'replace')
+    return str_decode(s, "utf-8", "replace")
 
 
 def astr(s):
@@ -791,7 +807,7 @@ def astr(s):
     if maybe_unicode_str(s):
         if PY3K:
             return s
-        return s.encode('utf-8')
+        return s.encode("utf-8")
 
     return str(s)
 
@@ -833,39 +849,39 @@ def tm_path(name):
     GoSublime is not located in the ST Package directory.
     """
     d = {
-        '9o': 'syntax/GoSublime-9o.tmLanguage',
-        'doc': 'GsDoc.hidden-tmLanguage',
-        'go': 'syntax/GoSublime-Go.tmLanguage',
-        'gohtml': 'syntax/GoSublime-HTML.tmLanguage',
+        "9o": "syntax/GoSublime-9o.tmLanguage",
+        "doc": "GsDoc.hidden-tmLanguage",
+        "go": "syntax/GoSublime-Go.tmLanguage",
+        "gohtml": "syntax/GoSublime-HTML.tmLanguage",
     }
 
     try:
         # CEV: This file does not appear to exist on ST3.
-        so = sublime.load_settings('GoSublime-next.sublime-settings')
-        if 'go' in so.get('extensions', []):
-            d['go'] = 'GoSublime-next.tmLanguage'
+        so = sublime.load_settings("GoSublime-next.sublime-settings")
+        if "go" in so.get("extensions", []):
+            d["go"] = "GoSublime-next.tmLanguage"
     except Exception:
         pass
 
     # TODO: This appears to fail when GoSublime is moved.
     # Updated for name change to 'GoSubl'
-    return 'Packages/GoSubl/%s' % d[name]
+    return "Packages/GoSubl/%s" % d[name]
 
 
 def packages_dir():
     """Returns the path of the Sublime Text User Package ("Packages/User").
     """
-    fn = attr('gs.packages_dir')
+    fn = attr("gs.packages_dir")
     if not fn:
         fn = sublime.packages_path()
-        set_attr('gs.packages_dir', fn)
+        set_attr("gs.packages_dir", fn)
     return fn
 
 
 def dist_path(*a):
     """Returns the path of the GoSubl package.
     """
-    return os.path.join(packages_dir(), 'GoSubl', *a)
+    return os.path.join(packages_dir(), "GoSubl", *a)
 
 
 def mkdirp(fn):
@@ -885,7 +901,7 @@ def _home_path(*paths):
     For example if *paths equals 'bin' and the platform is 'osx-x64', _home_path
     returns 'Sublime Text 3/Packages/User/GoSublime/osx-x64/bin'.
     """
-    return os.path.join(packages_dir(), 'User', 'GoSublime', about.PLATFORM, *paths)
+    return os.path.join(packages_dir(), "User", "GoSublime", about.PLATFORM, *paths)
 
 
 def home_dir_path(*path):
@@ -919,19 +935,19 @@ def json_decode(s, default):
     try:
         res = json.loads(s)
         if is_a(res, default):
-            return (res, '')
-        return (res, 'Unexpected value type')
+            return (res, "")
+        return (res, "Unexpected value type")
     except Exception as ex:
-        return (default, 'Decode Error: %s' % ex)
+        return (default, "Decode Error: %s" % ex)
 
 
 def json_encode(a):
     """Returns a encoded into JSON and an error message, if any.
     """
     try:
-        return (json.dumps(a), '')
+        return (json.dumps(a), "")
     except Exception as ex:
-        return ('', 'Encode Error: %s' % ex)
+        return ("", "Encode Error: %s" % ex)
 
 
 def attr(k, d=None):
@@ -964,7 +980,7 @@ def del_attr(k):
 # continue to use the try: X except: X=Y hack
 def checked(domain, k):
     with _checked_lck:
-        k = 'common.checked.%s.%s' % (domain, k)
+        k = "common.checked.%s.%s" % (domain, k)
         v = _checked.get(k, False)
         _checked[k] = True
     return v
@@ -989,21 +1005,21 @@ def which_ok(fn):
 
 def which(cmd):
     if os.path.isabs(cmd):
-        return cmd if which_ok(cmd) else ''
+        return cmd if which_ok(cmd) else ""
 
     # not supporting PATHEXT. period.
     if os_is_windows():
-        cmd = '%s.exe' % cmd
+        cmd = "%s.exe" % cmd
 
     seen = {}
-    for p in getenv('PATH', '').split(os.pathsep):
+    for p in getenv("PATH", "").split(os.pathsep):
         p = os.path.join(p, cmd)
         if p not in seen and which_ok(p):
             return p
 
         seen[p] = True
 
-    return ''
+    return ""
 
 
 # WARN (CEV): Module initialization?
@@ -1015,20 +1031,15 @@ except:
     sm_task_counter = 0
     sm_tasks = {}
     sm_frame = 0
-    sm_frames = (
-        u'\u25D2',
-        u'\u25D1',
-        u'\u25D3',
-        u'\u25D0'
-    )
+    sm_frames = (u"\u25D2", u"\u25D1", u"\u25D3", u"\u25D0")
     sm_tm = datetime.datetime.now()
-    sm_text = ''
-    sm_set_text = ''
+    sm_text = ""
+    sm_set_text = ""
 
     st2_status_message = sublime.status_message
     sublime.status_message = status_message
 
-    DEVNULL = open(os.devnull, 'w')
+    DEVNULL = open(os.devnull, "w")
     LOGFILE = DEVNULL
 
 
@@ -1043,10 +1054,14 @@ def gs_init(m={}):
     """
     global LOGFILE
     try:
-        LOGFILE = open(home_path('log.txt'), 'a+')
+        LOGFILE = open(home_path("log.txt"), "a+")
     except Exception as ex:
         LOGFILE = DEVNULL
-        notice(NAME, 'Cannot create log file. Remote(margo) and persistent logging will be disabled. Error: %s' % ex)
+        notice(
+            NAME,
+            "Cannot create log file. Remote(margo) and persistent logging will be disabled. Error: %s"
+            % ex,
+        )
 
     sched_sm_cb()
 
