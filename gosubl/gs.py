@@ -380,7 +380,7 @@ def is_go_source_view(view=None, strict=True):
         return False
 
     fn = view.file_name() or ''
-    return fn.lower().endswith('.go')
+    return fn.endswith('.go')
 
 
 def active_valid_go_view(win=None, strict=True):
