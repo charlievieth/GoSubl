@@ -21,10 +21,11 @@ type FormatResponse struct {
 
 func (f *FormatRequest) doCall() (interface{}, string) {
 	opts := imports.Options{
-		TabWidth:  f.Tabwidth,
-		TabIndent: f.TabIndent,
-		Comments:  true,
-		Fragment:  true,
+		TabWidth:    f.Tabwidth,
+		TabIndent:   f.TabIndent,
+		Comments:    true,
+		Fragment:    true,
+		SimplifyAST: true,
 	}
 	src := []byte(f.Src)
 	out, err := imports.Process(f.Filename, src, &opts)
