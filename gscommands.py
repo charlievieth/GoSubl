@@ -44,7 +44,7 @@ class GsFmtCommand(sublime_plugin.TextCommand):
         if res.get("no_change", False):
             return
 
-        src = res.get("src", "").strip()
+        src = res.get("src", "")
         if not src:
             gs.println(DOMAIN, "cannot fmt file. it appears to be empty")
             return
