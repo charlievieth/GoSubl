@@ -232,6 +232,7 @@
 				{"text": "import", "title": "import (...)", "value": "import (\n\t\"$1\"\n)"},
 				{"text": "func", "title": "func {...}", "value": "func ${1:name}($2)$3 {\n\t$0\n}"},
 				{"text": "var", "title": "var (...)", "value": "var (\n\t$1\n)"},
+				{"text": "if", "title": "if {...}", "value": "if ${1:condition} {\n\t$2\n}"},
 				{"text": "const", "title": "const (...)", "value": "const (\n\t$1\n)"},
 				{"text": "init", "title": "func init()", "value": "func init() {\n\t$1\n}"},
 				{
