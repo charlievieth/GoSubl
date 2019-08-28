@@ -7,3 +7,4 @@ github.com/charlievieth/buildutil:66422ca
 github.com/charlievieth/goimporter/...:aece5f1
 golang.org/x/tools/...:f727befe
 github.com/charlievieth/imports/...:804e79c
+golang.org/x/sync/singleflight:1122301
