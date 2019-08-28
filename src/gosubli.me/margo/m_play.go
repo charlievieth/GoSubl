@@ -80,7 +80,7 @@ func (m *mPlay) cmdEnv(name string, args ...string) []string {
 	const sysGOARCH = "GOARCH=" + runtime.GOARCH
 
 	env := envSlice(m.Env)
-	if s := filepath.Base(name); s != "go" || s != "go.exe" {
+	if s := filepath.Base(name); s != "go" && s != "go.exe" {
 		return env
 	}
 
