@@ -33,22 +33,6 @@ type CompLintReport struct {
 	Errors        []CompileError `json:"errors,omitempty"`
 }
 
-func isTestPkg(path string) bool {
-	return strings.HasSuffix(path, "_test.go")
-}
-
-func isMainPkg(path string) bool {
-	name, err := buildutil.ReadPackageName(path, nil)
-	return err == nil && name == "main"
-}
-
-func firstLine(b []byte) []byte {
-	if n := bytes.IndexByte(b, '\n'); n > 0 {
-		b = bytes.TrimRightFunc(b[:n], unicode.IsSpace)
-	}
-	return b
-}
-
 var compRe = regexp.MustCompile(`(?m)^(?P<file>[^:#]+\.go)\:(?P<row>\d+)\:(?:(?P<col>\d+)\:)?\s*(?P<msg>.+)$`)
 
 func (r *CompLintReport) ParseErrors(dirname string, out []byte) {
@@ -61,7 +45,11 @@ func (r *CompLintReport) ParseErrors(dirname string, out []byte) {
 	)
 	out = bytes.TrimSpace(out)
 
-	if first := firstLine(out); len(first) != 0 && first[0] != '#' {
+	first := out
+	if n := bytes.IndexByte(out, '\n'); n > 0 {
+		first = bytes.TrimRightFunc(out[:n], unicode.IsSpace)
+	}
+	if len(first) != 0 && first[0] != '#' {
 		r.TopLevelError = string(first)
 	}
 
@@ -85,18 +73,13 @@ func (r *CompLintReport) ParseErrors(dirname string, out []byte) {
 	}
 }
 
-type CompLintkey struct {
-	Filename string
-	Modtime  string
-}
-
 func (c *CompLintRequest) Compile(ctx context.Context) *CompLintReport {
 	tags := make(map[string]bool)
 	pkgname, _, _ := buildutil.ReadPackageNameTags(&build.Default, c.Filename, tags)
 
 	var args []string
 	switch {
-	case isTestPkg(c.Filename):
+	case strings.HasSuffix(c.Filename, "_test.go"):
 		args = []string{"test", "-c", "-i", "-o", os.DevNull}
 	case pkgname == "main":
 		args = []string{"build", "-i"}
