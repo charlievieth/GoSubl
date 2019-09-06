@@ -25,7 +25,7 @@ type FormatResponse struct {
 	NoChange bool   `json:"no_change"`
 }
 
-func (f *FormatRequest) doCall() (FormatResponse, string) {
+func (f *FormatRequest) doCall() (*FormatResponse, string) {
 	opts := imports.Options{
 		TabWidth:    f.Tabwidth,
 		TabIndent:   f.TabIndent,
@@ -36,12 +36,12 @@ func (f *FormatRequest) doCall() (FormatResponse, string) {
 	src := []byte(f.Src)
 	out, err := imports.Process(f.Filename, src, &opts)
 	if out == nil && err != nil {
-		return FormatResponse{NoChange: true}, err.Error()
+		return &FormatResponse{NoChange: true}, err.Error()
 	}
 	if bytes.Equal(src, out) {
-		return FormatResponse{NoChange: true}, ""
+		return &FormatResponse{NoChange: true}, ""
 	}
-	return FormatResponse{Src: string(out)}, ""
+	return &FormatResponse{Src: string(out)}, ""
 }
 
 func (f *FormatRequest) formatOnly() (*FormatResponse, error) {
@@ -67,7 +67,7 @@ func (f *FormatRequest) formatOnly() (*FormatResponse, error) {
 	return nil, nil
 }
 
-func (f *FormatRequest) callTimeout() (FormatResponse, string) {
+func (f *FormatRequest) callTimeout() (*FormatResponse, string) {
 	type Response struct {
 		Out []byte
 		Err error
@@ -98,12 +98,12 @@ func (f *FormatRequest) callTimeout() (FormatResponse, string) {
 		select {
 		case res := <-ch:
 			if res.Out == nil && res.Err != nil {
-				return FormatResponse{NoChange: true}, res.Err.Error()
+				return &FormatResponse{NoChange: true}, res.Err.Error()
 			}
 			if bytes.Equal(src, res.Out) {
-				return FormatResponse{NoChange: true}, ""
+				return &FormatResponse{NoChange: true}, ""
 			}
-			return FormatResponse{Src: string(res.Out)}, ""
+			return &FormatResponse{Src: string(res.Out)}, ""
 		case <-timer.C:
 			go func() {
 				fset := token.NewFileSet()
@@ -125,7 +125,7 @@ func (f *FormatRequest) callTimeout() (FormatResponse, string) {
 			}()
 		}
 	}
-	return FormatResponse{NoChange: true}, "Timeout formatting file: " +
+	return &FormatResponse{NoChange: true}, "Timeout formatting file: " +
 		time.Since(start).String()
 }
 
