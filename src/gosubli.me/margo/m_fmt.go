@@ -2,14 +2,18 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"go/parser"
 	"go/printer"
 	"go/token"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/charlievieth/imports"
+	"github.com/golang/groupcache/lru"
+	"golang.org/x/sync/singleflight"
 )
 
 type FormatRequest struct {
@@ -23,25 +27,6 @@ type FormatRequest struct {
 type FormatResponse struct {
 	Src      string `json:"src"`
 	NoChange bool   `json:"no_change"`
-}
-
-func (f *FormatRequest) doCall() (*FormatResponse, string) {
-	opts := imports.Options{
-		TabWidth:    f.Tabwidth,
-		TabIndent:   f.TabIndent,
-		Comments:    true,
-		Fragment:    true,
-		SimplifyAST: true,
-	}
-	src := []byte(f.Src)
-	out, err := imports.Process(f.Filename, src, &opts)
-	if out == nil && err != nil {
-		return &FormatResponse{NoChange: true}, err.Error()
-	}
-	if bytes.Equal(src, out) {
-		return &FormatResponse{NoChange: true}, ""
-	}
-	return &FormatResponse{Src: string(out)}, ""
 }
 
 func (f *FormatRequest) formatOnly() (*FormatResponse, error) {
@@ -129,34 +114,104 @@ func (f *FormatRequest) callTimeout() (*FormatResponse, string) {
 		time.Since(start).String()
 }
 
-func (FormatRequest) errStr(err interface{}) string {
+func (*FormatRequest) recoverErr(err interface{}) error {
 	if err == nil {
-		return "panic: nil error!"
+		return errors.New("panic: nil error!")
 	}
 	switch v := err.(type) {
 	case string:
-		return v
+		return errors.New(v)
 	case error:
-		return v.Error()
+		return v
 	case fmt.Stringer:
-		return v.String()
+		return errors.New(v.String())
 	default:
-		return fmt.Sprintf("%#v", err)
+		return fmt.Errorf("%#v", err)
 	}
 }
 
-func (f *FormatRequest) Call() (res interface{}, errStr string) {
+func (f *FormatRequest) doCall() (res *FormatResponse, err error) {
 	defer func() {
 		if e := recover(); e != nil {
-			if errStr == "" {
-				errStr = f.errStr(e)
-			} else {
-				errStr += ": " + f.errStr(e)
-			}
+			err = f.recoverErr(e)
+			res = &FormatResponse{NoChange: true}
 		}
 	}()
-	res, errStr = f.doCall()
-	return
+
+	opts := imports.Options{
+		TabWidth:    f.Tabwidth,
+		TabIndent:   f.TabIndent,
+		Comments:    true,
+		Fragment:    true,
+		SimplifyAST: true,
+	}
+	src := []byte(f.Src)
+
+	var out []byte
+	out, err = imports.Process(f.Filename, src, &opts)
+	if out == nil && err != nil {
+		return &FormatResponse{NoChange: true}, err
+	}
+
+	if bytes.Equal(src, out) {
+		return &FormatResponse{NoChange: true}, nil
+	}
+	return &FormatResponse{Src: string(out)}, nil
+}
+
+var (
+	formatRequestGroup   singleflight.Group
+	formatRequestCache   = lru.New(64)
+	formatRequestCacheMu sync.Mutex
+)
+
+type FormatCacheEntry struct {
+	Res    *FormatResponse
+	ErrStr string
+}
+
+func (f *FormatRequest) cacheGet() (*FormatResponse, string, bool) {
+	formatRequestCacheMu.Lock()
+	v, ok := formatRequestCache.Get(f.Src)
+	formatRequestCacheMu.Unlock()
+	if ok {
+		ent := v.(*FormatCacheEntry)
+		return ent.Res, ent.ErrStr, true
+	}
+	return nil, "", false
+}
+
+func (f *FormatRequest) cachePut(res *FormatResponse, err error) (*FormatResponse, error) {
+	ent := &FormatCacheEntry{
+		Res:    res,
+		ErrStr: errStr(err),
+	}
+	formatRequestCacheMu.Lock()
+	formatRequestCache.Add(f.Src, ent)
+	formatRequestCacheMu.Unlock()
+	return res, err
+}
+
+func (f *FormatRequest) Call() (interface{}, string) {
+	if res, errStr, ok := f.cacheGet(); ok {
+		return res, errStr
+	}
+
+	v, err, _ := formatRequestGroup.Do(f.Src, func() (v interface{}, err error) {
+		return f.cachePut(f.doCall())
+	})
+	res, ok := v.(*FormatResponse)
+	if !ok && err == nil {
+		err = fmt.Errorf("m_fmt: invalid response type: %T", v)
+	}
+	// make sure this is never nil
+	if res == nil {
+		res = &FormatResponse{NoChange: true}
+	}
+	if err != nil {
+		return res, err.Error()
+	}
+	return res, ""
 }
 
 func init() {
