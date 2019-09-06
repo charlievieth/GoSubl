@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"context"
+	"go/build"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -83,18 +85,32 @@ func (r *CompLintReport) ParseErrors(dirname string, out []byte) {
 	}
 }
 
-func (c *CompLintRequest) Compile() *CompLintReport {
+type CompLintkey struct {
+	Filename string
+	Modtime  string
+}
+
+func (c *CompLintRequest) Compile(ctx context.Context) *CompLintReport {
+	tags := make(map[string]bool)
+	pkgname, _, _ := buildutil.ReadPackageNameTags(&build.Default, c.Filename, tags)
+
 	var args []string
 	switch {
 	case isTestPkg(c.Filename):
 		args = []string{"test", "-c", "-i", "-o", os.DevNull}
-	case isMainPkg(c.Filename):
+	case pkgname == "main":
 		args = []string{"build", "-i"}
 	default:
 		args = []string{"install", "-i"}
 	}
+
+	// only handle the "integration" tag for now
+	if tags["integration"] {
+		args = append(args, "-tags", "integration")
+	}
+
 	dirname := filepath.Dir(c.Filename)
-	cmd := exec.Command("go", args...)
+	cmd := exec.CommandContext(ctx, "go", args...)
 	cmd.Dir = dirname
 	out, err := cmd.CombinedOutput()
 	r := &CompLintReport{
@@ -108,7 +124,7 @@ func (c *CompLintRequest) Compile() *CompLintReport {
 }
 
 func (c *CompLintRequest) Call() (interface{}, string) {
-	return c.Compile(), ""
+	return c.Compile(context.Background()), ""
 }
 
 func init() {
