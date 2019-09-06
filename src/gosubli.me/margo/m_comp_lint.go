@@ -3,7 +3,8 @@ package main
 import (
 	"bytes"
 	"context"
-	"go/build"
+	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 	"unicode"
 
 	"github.com/charlievieth/buildutil"
+	"golang.org/x/sync/singleflight"
 )
 
 type CompLintRequest struct {
@@ -73,9 +75,9 @@ func (r *CompLintReport) ParseErrors(dirname string, out []byte) {
 	}
 }
 
-func (c *CompLintRequest) Compile(ctx context.Context) *CompLintReport {
+func (c *CompLintRequest) Compile(ctx context.Context, src []byte) *CompLintReport {
 	tags := make(map[string]bool)
-	pkgname, _, _ := buildutil.ReadPackageNameTags(&build.Default, c.Filename, tags)
+	pkgname, _, _ := buildutil.ReadPackageNameTags(c.Filename, src, tags)
 
 	var args []string
 	switch {
@@ -106,8 +108,22 @@ func (c *CompLintRequest) Compile(ctx context.Context) *CompLintReport {
 	return r
 }
 
+var compLintGroup singleflight.Group
+
 func (c *CompLintRequest) Call() (interface{}, string) {
-	return c.Compile(context.Background()), ""
+	src, err := ioutil.ReadFile(c.Filename)
+	if err != nil {
+		return &CompLintReport{CmdError: err.Error()}, err.Error()
+	}
+	key := string(src)
+	v, _, _ := compLintGroup.Do(key, func() (interface{}, error) {
+		return c.Compile(context.Background(), src), nil
+	})
+	r, ok := v.(*CompLintReport)
+	if !ok {
+		return nil, fmt.Sprintf("complint: invalid return type: %T", v)
+	}
+	return r, ""
 }
 
 func init() {
