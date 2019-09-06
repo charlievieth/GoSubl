@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"sync"
 )
 
 type importReader struct {
@@ -18,6 +19,33 @@ type importReader struct {
 	err  error
 	eof  bool
 	nerr int
+}
+
+func (r *importReader) reset() {
+	r.b.Reset(nil) // remove reference
+	*r = importReader{
+		b:   r.b,
+		buf: r.buf[:0],
+	}
+}
+
+var importReaderPool sync.Pool
+
+func getImportReader(rd io.Reader) (r *importReader) {
+	if v := importReaderPool.Get(); v != nil {
+		r = v.(*importReader)
+		r.b.Reset(rd)
+		return r
+	}
+	return &importReader{
+		b:   bufio.NewReader(rd),
+		buf: make([]byte, 0, 128),
+	}
+}
+
+func putImportReader(r *importReader) {
+	r.reset()
+	importReaderPool.Put(r)
 }
 
 func isIdent(c byte) bool {
@@ -199,19 +227,22 @@ func (r *importReader) readImport(imports *[]string) {
 // readComments is like ioutil.ReadAll, except that it only reads the leading
 // block of comments in the file.
 func readComments(f io.Reader) ([]byte, error) {
-	r := &importReader{b: bufio.NewReader(f)}
+	r := getImportReader(f)
 	r.peekByte(true)
 	if r.err == nil && !r.eof {
 		// Didn't reach EOF, so must have found a non-space byte. Remove it.
 		r.buf = r.buf[:len(r.buf)-1]
 	}
-	return r.buf, r.err
+	buf := append([]byte(nil), r.buf...)
+	err := r.err
+	putImportReader(r)
+	return buf, err
 }
 
 // readImports is like ioutil.ReadAll, except that it expects a Go file as input
 // and stops reading the input once the imports have completed.
 func readImports(f io.Reader, reportSyntaxError bool, imports *[]string) ([]byte, error) {
-	r := &importReader{b: bufio.NewReader(f)}
+	r := getImportReader(f)
 
 	r.readKeyword("package")
 	r.readIdent()
@@ -231,7 +262,9 @@ func readImports(f io.Reader, reportSyntaxError bool, imports *[]string) ([]byte
 	// If we stopped successfully before EOF, we read a byte that told us we were done.
 	// Return all but that last byte, which would cause a syntax error if we let it through.
 	if r.err == nil && !r.eof {
-		return r.buf[:len(r.buf)-1], nil
+		buf := append([]byte(nil), r.buf[:len(r.buf)-1]...)
+		putImportReader(r)
+		return buf, nil
 	}
 
 	// If we stopped for a syntax error, consume the whole file so that
@@ -243,13 +276,16 @@ func readImports(f io.Reader, reportSyntaxError bool, imports *[]string) ([]byte
 		}
 	}
 
-	return r.buf, r.err
+	buf := append([]byte(nil), r.buf...)
+	err := r.err
+	putImportReader(r)
+	return buf, err
 }
 
 // readImportsFast is like readImports, except that it stops reading after the
 // package clause.
 func readImportsFast(f io.Reader) ([]byte, error) {
-	r := importReader{b: bufio.NewReader(f)}
+	r := getImportReader(f)
 
 	r.readKeyword("package")
 	r.readIdent()
@@ -258,16 +294,24 @@ func readImportsFast(f io.Reader) ([]byte, error) {
 	// If we stopped successfully before EOF, we read a byte that told us we were done.
 	// Return all but that last byte, which would cause a syntax error if we let it through.
 	if r.err == nil && !r.eof {
-		return r.buf[:len(r.buf)-1], nil
+		buf := append([]byte(nil), r.buf[:len(r.buf)-1]...)
+		putImportReader(r)
+		return buf, nil
 	}
-	return r.buf, r.err
+	buf := append([]byte(nil), r.buf...)
+	err := r.err
+	putImportReader(r)
+	return buf, err
 }
 
 func isSpace(c byte) bool {
 	return c == ' ' || c == '\t' || c == '\n' || c == '\r'
 }
 
-var packageBytes = []byte("package")
+var (
+	packageBytes   = []byte("package")
+	starSlashBytes = []byte("*/")
+)
 
 func readPackageName(b []byte) (string, error) {
 	const minLen = len("package _\n")
@@ -294,7 +338,7 @@ Loop:
 				}
 				b = b[n+1:]
 			case '*':
-				n := bytes.Index(b, []byte("*/"))
+				n := bytes.Index(b, starSlashBytes)
 				if n == -1 || n == len(b)-2 {
 					return "", errSyntax
 				}

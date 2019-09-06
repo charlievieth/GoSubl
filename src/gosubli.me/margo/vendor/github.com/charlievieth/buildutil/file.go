@@ -39,31 +39,7 @@ func goodOSArchFile(ctxt *build.Context, name string, allTags map[string]bool) b
 	}
 	name = name[i:] // ignore everything before first _
 
-	// inlined string split
-	var l []string
-	{
-		n := 1
-		for _, c := range name {
-			if c == '_' {
-				n++
-			}
-		}
-		l = make([]string, n)
-		n--
-		i := 0
-		for i < n {
-			m := strings.IndexByte(name, '_')
-			if m < 0 {
-				break
-			}
-			l[i] = name[:m]
-			name = name[m+1:]
-			i++
-		}
-		l[i] = name
-		l = l[:i+1]
-	}
-
+	l := strings.Split(name, "_")
 	if n := len(l); n > 0 && l[n-1] == "test" {
 		l = l[:n-1]
 	}
@@ -97,20 +73,4 @@ func goodOSArchFile(ctxt *build.Context, name string, allTags map[string]bool) b
 		return l[n-1] == ctxt.GOARCH
 	}
 	return true
-}
-
-var knownOS = make(map[string]bool)
-var knownArch = make(map[string]bool)
-var knownReleaseTag = make(map[string]bool)
-
-func init() {
-	for _, v := range strings.Fields(goosList) {
-		knownOS[v] = true
-	}
-	for _, v := range strings.Fields(goarchList) {
-		knownArch[v] = true
-	}
-	for _, v := range build.Default.ReleaseTags {
-		knownReleaseTag[v] = true
-	}
 }

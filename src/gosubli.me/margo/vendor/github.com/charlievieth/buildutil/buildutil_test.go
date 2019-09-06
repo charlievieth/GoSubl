@@ -388,20 +388,20 @@ const ShouldBuild_File1 = "// Copyright The Go Authors.\n\n" +
 const ShouldBuild_File2 = `
 // Copyright The Go Authors.
 
-// +build tag1
+` + "// +build tag1" + `
 package build
 
-// +build tag1
+` + "// +build tag1" + `
 
 import "bytes"
 
-// +build tag1
+` + "// +build tag1" + `
 
 // shouldBuild checks tags given by lines of the form
-// +build tag
+` + "// +build tag" + `
 func shouldBuild(content []byte) bool {
 
-	// +build tag1
+	` + "// +build tag1" + `
 
 	return bytes.Equal(content, []byte("content")
 }
