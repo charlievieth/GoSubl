@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"unicode"
@@ -75,6 +76,19 @@ func (r *CompLintReport) ParseErrors(dirname string, out []byte) {
 	}
 }
 
+// Send compile output to /dev/null if a directory exists with the same
+// name as the default output binary
+func (c *CompLintRequest) BuildOutput() []string {
+	if runtime.GOOS != "windows" {
+		dir := filepath.Dir(c.Filename)
+		output := filepath.Join(dir, filepath.Base(dir))
+		if isDir(output) {
+			return []string{"-o", os.DevNull}
+		}
+	}
+	return nil
+}
+
 func (c *CompLintRequest) Compile(ctx context.Context, src []byte) *CompLintReport {
 	tags := make(map[string]bool)
 	pkgname, _, _ := buildutil.ReadPackageNameTags(c.Filename, src, tags)
@@ -85,6 +99,9 @@ func (c *CompLintRequest) Compile(ctx context.Context, src []byte) *CompLintRepo
 		args = []string{"test", "-c", "-i", "-o", os.DevNull}
 	case pkgname == "main":
 		args = []string{"build", "-i"}
+		if extra := c.BuildOutput(); len(extra) != 0 {
+			args = append(args, extra...)
+		}
 	default:
 		args = []string{"install", "-i"}
 	}
