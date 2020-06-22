@@ -6,6 +6,9 @@ from gosubl import mg9
 import sublime
 import sublime_plugin
 
+# history_list: is used to set the jump history
+from Default.history_list import get_jump_history_for_view
+
 DOMAIN = "GsDoc"
 
 GOOS_PAT = re.compile(r"_(%s)" % "|".join(gs.GOOSES))
@@ -58,16 +61,62 @@ class GsDocCommand(sublime_plugin.TextCommand):
     def show_output(self, s):
         gs.show_output(DOMAIN + "-output", s, False, "GsDoc")
 
+    # TODO (CEV): fix me - this doesn't seem to work
+    def _toggle_indicator(self, file_name: str, line: int, column: int,) -> None:
+        """Toggle mark indicator to focus cursor
+        """
+
+        view = self.view
+        pt = view.text_point(int(line) - 1, int(column))
+        region_name = 'gosubl.indicator.{}.{}'.format(
+            view.id(), line
+        )
+        gs.println('creating region: {}'.format(region_name))
+
+        for i in range(3):
+            delta = 300 * i * 2
+            sublime.set_timeout(lambda: view.add_regions(
+                region_name,
+                [sublime.Region(pt, pt)],
+                'comment',
+                'bookmark',
+                sublime.DRAW_EMPTY_AS_OVERWRITE
+            ), delta)
+            sublime.set_timeout(
+                lambda: view.erase_regions(region_name),
+                delta + 300
+            )
+
+    def jump(
+        self,
+        file_name: str,
+        line: int,
+        column: int,
+        transient: bool = False,
+    ) -> None:
+        """Toggle mark indicator to focus cursor
+        """
+
+        position = "{}:{}:{}".format(file_name, line, column)
+        get_jump_history_for_view(self.view).push_selection(self.view)
+        gs.println("opening {}".format(position))
+        self.view.window().open_file(position, sublime.ENCODED_POSITION)
+
+        if not transient:
+            self._toggle_indicator(file_name, line, column)
+
     def goto_callback(self, docs, err):
         if err:
             self.show_output("// Error: %s" % err)
         elif len(docs) and "fn" in docs[0]:
             d = docs[0]
+
             fn = d.get("fn", "")
-            row = d.get("row", 0)
-            col = d.get("col", 0)
-            gs.println("opening %s:%s:%s" % (fn, row, col))
-            gs.focus(fn, row, col)
+            row = d.get("row", 0) + 1
+            col = d.get("col", 0) + 1
+            if fn:
+                self.jump(fn, row, col)
+            return
         else:
             self.show_output("%s: cannot find definition" % DOMAIN)
 

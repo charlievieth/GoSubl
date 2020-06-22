@@ -607,6 +607,7 @@ def do_focus(fn, row, col, win, focus_pat, cb):
             cb(True)
 
 
+# TODO (CEV): use the logic from GsDocCommand.jump()
 def focus(fn, row=0, col=0, win=None, timeout=100, focus_pat="^package ", cb=None):
     sublime.set_timeout(lambda: do_focus(fn, row, col, win, focus_pat, cb), timeout)
 
