@@ -212,7 +212,12 @@ def install(aso_install_vesion, force_install):
             ["go", "build", "-v", "-x", "-o", INSTALL_EXE, "gosubli.me/margo"]
         )
         cmd.wd = gs.home_dir_path("bin")
-        cmd.env = {"CGO_ENABLED": "0", "GOBIN": "", "GOPATH": gopath}
+        cmd.env = {
+            "CGO_ENABLED": "0",
+            "GOBIN": "",
+            "GOPATH": gopath,
+            "GO111MODULE": "on",
+        }
 
         ev.debug("%s.build" % DOMAIN, {"cmd": cmd.cmd_lst, "cwd": cmd.wd})
 
