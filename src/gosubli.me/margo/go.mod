@@ -1,4 +1,4 @@
-module github.com/charlievieth/GoSubl/src/gosubli.me/margo
+module gosubli.me/margo
 
 go 1.15
 
