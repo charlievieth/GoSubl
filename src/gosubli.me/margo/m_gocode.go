@@ -14,7 +14,6 @@ import (
 	"runtime"
 	"strings"
 	"sync"
-	"unicode/utf8"
 
 	"github.com/charlievieth/gocode"
 	"github.com/golang/groupcache/lru"
@@ -268,23 +267,16 @@ func (v *calltipVisitor) Visit(node ast.Node) (w ast.Visitor) {
 }
 
 func (g *GoCode) bytePos() (int, error) {
-	s := g.Src
 	off := g.Pos
-	if len(s) == 0 || len(s) <= off || off < 0 {
+	s := g.Src
+	if off < 0 || off > len(s) {
 		return -1, errors.New("gocode: nil source")
 	}
-	i := 0
-	var n int
-	for n = 0; i < len(s) && n < off; n++ {
-		if s[i] < utf8.RuneSelf {
-			i++
-		} else {
-			_, size := utf8.DecodeRuneInString(s[i:])
-			i += size
+	for i := range s {
+		if off <= 0 {
+			return i, nil
 		}
-	}
-	if n == off && i < len(s) {
-		return i, nil
+		off--
 	}
 	return -1, fmt.Errorf("gocode: invalid offset: %d", g.Pos)
 }
