@@ -2,8 +2,8 @@ github.com/charlievieth/buildutil v0.0.1 h1:utTten+aV2QEj09PmmNapfFidvTA9aw3d7zf
 github.com/charlievieth/buildutil v0.0.1/go.mod h1:ixnLv8dl9ropX3Bkbt17o7jPob5tS1hU1N96XeFCsIU=
 github.com/charlievieth/fs v0.0.1 h1:sJqnp1RWguMAojHpyCbZ2KyXNp2ihxGIFPUNb8XDGu8=
 github.com/charlievieth/fs v0.0.1/go.mod h1:74vroF06jvR8XMafvi2CYzs8WruHL1axh/qFx7XN5Xw=
-github.com/charlievieth/gocode v0.0.1 h1:q3jCkU7QUztdweEN2eGbiv5Xr2mzAedcv0xfmNh9mRs=
-github.com/charlievieth/gocode v0.0.1/go.mod h1:s/mRS8d56UYm6jLStqrqQiiwXBgNipOPWndXjdpBtjQ=
+github.com/charlievieth/gocode v0.0.2 h1:8e0+ZnefbzrvGrtl6mDRvfFgvy9zcndCTp7aNEdRO6g=
+github.com/charlievieth/gocode v0.0.2/go.mod h1:s/mRS8d56UYm6jLStqrqQiiwXBgNipOPWndXjdpBtjQ=
 github.com/charlievieth/godef v0.0.2 h1:FewAOihX9ldN7nOmz0QTM5JVj53FeBCrRvS14AFHfuo=
 github.com/charlievieth/godef v0.0.2/go.mod h1:ZAeIeCG6bIf87N/mPtdLs65e6GzwqtWmcUAEa7OAFIo=
 github.com/charlievieth/imports v0.0.1 h1:3nNeTsj6OW8cu42VcHW9OfTM3nGJZD9oRw8kdDUWqAw=
