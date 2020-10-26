@@ -7,8 +7,10 @@ import (
 	"go/parser"
 	"go/token"
 	"os"
+	pathpkg "path"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strconv"
 
 	"github.com/charlievieth/pkgs"
@@ -26,9 +28,15 @@ type mImportPathsDecl struct {
 	Path string `json:"path"`
 }
 
+type mImportPathsDeclByName []mImportPathsDecl
+
+func (m mImportPathsDeclByName) Len() int           { return len(m) }
+func (m mImportPathsDeclByName) Swap(i, j int)      { m[i], m[j] = m[j], m[i] }
+func (m mImportPathsDeclByName) Less(i, j int) bool { return m[i].Name < m[j].Name }
+
 type mImportPathsResponse struct {
 	Imports []mImportPathsDecl `json:"imports"`
-	Paths   map[string]string  `json:"paths"`
+	Paths   []string           `json:"paths"`
 }
 
 func (m *mImportPaths) FileImports() ([]mImportPathsDecl, error) {
@@ -57,6 +65,8 @@ func (m *mImportPaths) FileImports() ([]mImportPathsDecl, error) {
 			var name string
 			if spec.Name != nil {
 				name = spec.Name.String()
+			} else {
+				name = pathpkg.Base(path)
 			}
 			imports = append(imports, mImportPathsDecl{
 				Path: path,
@@ -76,18 +86,13 @@ func (m *mImportPaths) Call() (interface{}, string) {
 
 	names, err := importPaths(m.Env, m.InstallSuffix, filepath.Dir(m.Fn))
 	if err != nil {
-		return nil, errStr(err)
-	}
-	paths := make(map[string]string, len(names))
-	for _, p := range names {
-		paths[p] = ""
+		return M{}, errStr(err)
 	}
 
-	res := mImportPathsResponse{
-		Imports: imports,
-		Paths:   paths,
-	}
-	return res, ""
+	sort.Strings(names)
+	sort.Sort(mImportPathsDeclByName(imports))
+
+	return &mImportPathsResponse{Imports: imports, Paths: names}, ""
 }
 
 func importPaths(environ map[string]string, installSuffix, importDir string) ([]string, error) {

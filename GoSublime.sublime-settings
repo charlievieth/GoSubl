@@ -178,7 +178,7 @@
 	//     import (
 	//         foo "gosubli.me/go-foo"
 	//     )
-	"use_named_imports": false,
+	// "use_named_imports": false,
 
 	// whether or not MarGo may automatically run `go install` for packages that are missing
 	// when you `import`, or `autocomplete` them
