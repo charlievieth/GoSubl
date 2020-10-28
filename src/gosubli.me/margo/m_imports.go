@@ -6,8 +6,8 @@ import (
 	"go/printer"
 	"go/token"
 
+	"github.com/charlievieth/imports"
 	"golang.org/x/tools/go/ast/astutil"
-	"golang.org/x/tools/imports"
 )
 
 type mImportDeclArg struct {
@@ -54,12 +54,23 @@ func (m *mImports) Call() (interface{}, string) {
 		}
 	}
 
+	var added []string
 	for _, x := range m.Toggle {
 		if x.Add {
 			astutil.AddImport(fset, af, x.Path)
+			added = append(added, x.Path)
 		} else {
 			astutil.DeleteImport(fset, af, x.Path)
 		}
+	}
+
+	if len(added) != 0 {
+		go func() {
+			autoInstall(AutoInstOptions{
+				ImportPaths: added,
+				Env:         m.Env,
+			})
+		}()
 	}
 
 	mode := printer.UseSpaces

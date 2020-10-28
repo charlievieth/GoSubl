@@ -9,11 +9,11 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"golang.org/x/tools/go/ast/astutil"
 )
 
-var (
-	autoInstCh = make(chan AutoInstOptions, 10)
-)
+var autoInstCh = make(chan AutoInstOptions, 10)
 
 func autoInstall(ao AutoInstOptions) {
 	select {
@@ -35,12 +35,23 @@ type AutoInstOptions struct {
 	InstallSuffix string
 }
 
+func unquoteImport(s string) string {
+	if len(s) != 0 && s[0] == '"' || s[0] == '`' {
+		return s[1 : len(s)-1]
+	}
+	return s
+}
+
 func (a *AutoInstOptions) imports() map[string]string {
 	m := map[string]string{}
 
 	if len(a.ImportPaths) == 0 {
-		_, af, _ := parseAstFile("a.go", a.Src, parser.ImportsOnly)
-		a.ImportPaths = fileImportPaths(af)
+		fset, af, _ := parseAstFile("a.go", a.Src, parser.ImportsOnly)
+		for _, block := range astutil.Imports(fset, af) {
+			for _, spec := range block {
+				a.ImportPaths = append(a.ImportPaths, unquoteImport(spec.Path.Value))
+			}
+		}
 	}
 
 	for _, p := range a.ImportPaths {
@@ -100,6 +111,9 @@ func (a *AutoInstOptions) install() {
 		return false
 	}
 
+	if _, ok := a.Env["GO111MODULE"]; !ok {
+		a.Env["GO111MODULE"] = "auto"
+	}
 	el := envSlice(a.Env)
 	installed := []string{}
 

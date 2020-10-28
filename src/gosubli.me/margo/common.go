@@ -151,27 +151,6 @@ func findPkg(fset *token.FileSet, importPath string, dirs []string, mode parser.
 	return
 }
 
-func fileImportPaths(af *ast.File) []string {
-	l := []string{}
-
-	if af != nil {
-		for _, decl := range af.Decls {
-			if gdecl, ok := decl.(*ast.GenDecl); ok {
-				for _, spec := range gdecl.Specs {
-					if ispec, ok := spec.(*ast.ImportSpec); ok && ispec.Path != nil {
-						ipath := strings.Trim(ispec.Path.Value, "\"`")
-						if ipath != "C" {
-							l = append(l, ipath)
-						}
-					}
-				}
-			}
-		}
-	}
-
-	return l
-}
-
 func pathList(p string) []string {
 	a := strings.Split(p, string(filepath.ListSeparator))
 	n := 0
