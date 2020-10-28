@@ -206,22 +206,20 @@ class GsPaletteCommand(sublime_plugin.WindowCommand):
                         ("%sdelete: %s ( %s )" % (indent, name, path), m)
                     )
 
-            add_imports = []
-            paths = response.get("paths", [])
-            for path in paths:
-                if path not in current_import_paths:
-                    # TODO: add back support for "use_named_imports" ???
-                    s = "%s%s" % (indent, path)
-                    m = {"path": path, "add": True}
-                    add_imports.append((s, m))
-
             for i in delete_imports:
                 self.add_item(i[0], self.toggle_import, (view, i[1]))
             if len(delete_imports) > 0:
                 self.add_item(" ", self.show_palette, "imports")
-            for i in add_imports:
-                self.add_item(i[0], self.toggle_import, (view, i[1]))
 
+            # add_imports = []
+            paths = response.get("paths", [])
+            for path in paths:
+                if path not in current_import_paths:
+                    # TODO: add back support for "use_named_imports" ???
+                    self.add_item(indent + path, self.toggle_import, (view, {
+                        "path": path,
+                        "add": True,
+                    }))
             self.do_show_panel()
 
         mg9.import_paths(view.file_name(), src, callback)
