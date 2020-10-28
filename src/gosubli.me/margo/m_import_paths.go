@@ -90,6 +90,19 @@ func (m *mImportPaths) Call() (interface{}, string) {
 	}
 
 	sort.Strings(names)
+	// dedupe since there may be duplicate vendored imports
+	if len(names) > 0 {
+		i := 0
+		s := ""
+		for _, x := range names {
+			if x != s {
+				names[i] = x
+				s = x
+				i++
+			}
+		}
+		names = names[:i]
+	}
 	sort.Sort(mImportPathsDeclByName(imports))
 
 	return &mImportPathsResponse{Imports: imports, Paths: names}, ""
