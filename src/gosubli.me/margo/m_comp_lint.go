@@ -2,11 +2,10 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"fmt"
+	"go/build"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -89,9 +88,13 @@ func (c *CompLintRequest) BuildOutput() []string {
 	return nil
 }
 
-func (c *CompLintRequest) Compile(ctx context.Context, src []byte) *CompLintReport {
-	tags := make(map[string]bool)
-	pkgname, _, _ := buildutil.ReadPackageNameTags(c.Filename, src, tags)
+func (c *CompLintRequest) Compile(src []byte) *CompLintReport {
+	pkgname, _ := buildutil.ReadPackageName(c.Filename, src)
+
+	ctxt, _ := buildutil.MatchContext(nil, c.Filename, src)
+	if ctxt == nil {
+		ctxt = &build.Default
+	}
 
 	var args []string
 	switch {
@@ -106,21 +109,16 @@ func (c *CompLintRequest) Compile(ctx context.Context, src []byte) *CompLintRepo
 		args = []string{"install", "-i"}
 	}
 
-	// only handle the "integration" tag for now
-	if tags["integration"] {
-		args = append(args, "-tags", "integration")
-	}
+	cmd := buildutil.GoCommand(ctxt, "go", args...)
+	cmd.Dir = filepath.Dir(c.Filename)
 
-	dirname := filepath.Dir(c.Filename)
-	cmd := exec.CommandContext(ctx, "go", args...)
-	cmd.Dir = dirname
 	out, err := cmd.CombinedOutput()
 	r := &CompLintReport{
 		Filename: c.Filename,
 	}
 	if err != nil {
 		r.CmdError = err.Error()
-		r.ParseErrors(dirname, out)
+		r.ParseErrors(cmd.Dir, out)
 	}
 	return r
 }
@@ -134,7 +132,7 @@ func (c *CompLintRequest) Call() (interface{}, string) {
 	}
 	key := string(src)
 	v, _, _ := compLintGroup.Do(key, func() (interface{}, error) {
-		return c.Compile(context.Background(), src), nil
+		return c.Compile(src), nil
 	})
 	r, ok := v.(*CompLintReport)
 	if !ok {
