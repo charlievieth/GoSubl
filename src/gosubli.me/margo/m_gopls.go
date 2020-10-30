@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -76,16 +77,19 @@ func ParseSourceLocation(pos string) (*SourceLocation, error) {
 // var re = regexp.MustCompile(`(?m)^(?:/[^/\n]+)+\.go:(\d+):(\d+(?:-\d+)?):?\b`)
 
 func (r *ReferencesRequest) Call() (interface{}, string) {
+	// CEV: we probably don't need this
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// TODO: handle Unicode
+	// TODO: use line/column (note: unicode is handled on the python side)
+
 	cmd := exec.CommandContext(ctx, "gopls", "-remote", "auto", "references", "-d",
 		fmt.Sprintf("%s:#%d", r.Filename, r.Offset))
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
+	cmd.Dir = filepath.Dir(r.Filename)
 
 	// this is dumb fix this
 	id := numbers.nextString()
