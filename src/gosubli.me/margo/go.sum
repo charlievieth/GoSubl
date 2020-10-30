@@ -1,13 +1,11 @@
-github.com/charlievieth/buildutil v0.0.1 h1:utTten+aV2QEj09PmmNapfFidvTA9aw3d7zfIBD0NHI=
-github.com/charlievieth/buildutil v0.0.1/go.mod h1:ixnLv8dl9ropX3Bkbt17o7jPob5tS1hU1N96XeFCsIU=
 github.com/charlievieth/buildutil v0.0.3 h1:szBsPZrcMPZ9aGyOd8xcVtJJuRmY8bBG8l9KWQO/i24=
 github.com/charlievieth/buildutil v0.0.3/go.mod h1:ixnLv8dl9ropX3Bkbt17o7jPob5tS1hU1N96XeFCsIU=
 github.com/charlievieth/fs v0.0.1 h1:sJqnp1RWguMAojHpyCbZ2KyXNp2ihxGIFPUNb8XDGu8=
 github.com/charlievieth/fs v0.0.1/go.mod h1:74vroF06jvR8XMafvi2CYzs8WruHL1axh/qFx7XN5Xw=
 github.com/charlievieth/gocode v0.0.3 h1:caTsNJSjyC19F3mVmHAFhqtAj71SFbqTUGIah5jhQmc=
 github.com/charlievieth/gocode v0.0.3/go.mod h1:Qz5qo7amoj0KtMEOwJ3pJoxXgv0nQwxKQEN7N+IEj8w=
-github.com/charlievieth/godef v0.0.2 h1:FewAOihX9ldN7nOmz0QTM5JVj53FeBCrRvS14AFHfuo=
-github.com/charlievieth/godef v0.0.2/go.mod h1:ZAeIeCG6bIf87N/mPtdLs65e6GzwqtWmcUAEa7OAFIo=
+github.com/charlievieth/godef v0.0.3 h1:C7BskiDwmvYms39jWVsN4IC5TJxK+XHthGouMYu1E3Q=
+github.com/charlievieth/godef v0.0.3/go.mod h1:qwi2j1L7RBR8EQ5PWHgQ8GCJZfe3JXsJYUwFbPMIpF4=
 github.com/charlievieth/imports v0.0.1 h1:3nNeTsj6OW8cu42VcHW9OfTM3nGJZD9oRw8kdDUWqAw=
 github.com/charlievieth/imports v0.0.1/go.mod h1:AjwKgsaA2I7Y6VMBh54oaqseEXdmwMQAO9ld4SNqwMA=
 github.com/charlievieth/pkgs v0.0.2 h1:vqPA4s7GRNxza5dqMSw90srovHYnfuwBtr5SzdeWfaM=
@@ -39,8 +37,8 @@ golang.org/x/tools v0.0.0-20180917221912-90fa682c2a6e/go.mod h1:n7NCudcB/nEzxVGm
 golang.org/x/tools v0.0.0-20191119224855-298f0cb1881e/go.mod h1:b+2E5dAYhXwXZwtnZ6UAqBI28+e2cm9otk0dWdXHAEo=
 golang.org/x/tools v0.0.0-20200918224948-78fed78f7d8c h1:PYt3G58VMvQ4mV9zueJUa2K+jMNCBVfDputA0HsKK3Q=
 golang.org/x/tools v0.0.0-20200918224948-78fed78f7d8c/go.mod h1:z6u4i615ZeAfBE4XtMziQW1fSVJXACjjbWkB/mvPzlU=
-golang.org/x/tools v0.0.0-20201028182000-5bbba6644ef5 h1:jGvmzard8MvsWDZuXcFbUMbghVlhO6z1mrjqkvdnRNY=
-golang.org/x/tools v0.0.0-20201028182000-5bbba6644ef5/go.mod h1:emZCQorbCU4vsT4fOWvOPXz4eW1wZW4PmDk9uLelYpA=
+golang.org/x/tools v0.0.0-20201030010431-2feb2bb1ff51 h1:/gZVO/TtBZ9jVAf8P5ZySajCofEId/8jR1PjkdSoqQ4=
+golang.org/x/tools v0.0.0-20201030010431-2feb2bb1ff51/go.mod h1:emZCQorbCU4vsT4fOWvOPXz4eW1wZW4PmDk9uLelYpA=
 golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
 golang.org/x/xerrors v0.0.0-20191011141410-1b5146add898/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
 golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 h1:go1bK/D/BFZV2I8cIQd1NKEZ+0owSTG1fDTci4IqFcE=
