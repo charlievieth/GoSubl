@@ -52,6 +52,10 @@
 		"args": {"run": ["share"]}
 	},
 	{
+		"caption": "GoSublime: Find References",
+		"command": "gs_references",
+	},
+	{
 		"caption": "GoSublime: Goto Definition",
 		"command": "gs_doc",
 		"args": {"mode": "goto"}
