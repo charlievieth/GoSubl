@@ -488,6 +488,23 @@ def imports(fn, src, toggle):
     )
 
 
+# TODO: include src one we start talking to gopls directly
+def references(filename, source, offset, callback):
+    tid = gs.begin(DOMAIN, "Finding references")
+
+    def cb(res, err):
+        gs.end(tid)
+        callback(res, err)
+
+    request = {
+        "filename": filename or "",
+        "offset": offset or 0,
+        "env": sh.env(),
+    }
+    acall("references", request, cb)
+    pass
+
+
 def doc(fn, src, offset, f):
     tid = gs.begin(DOMAIN, "Fetching doc info")
 

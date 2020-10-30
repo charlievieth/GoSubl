@@ -1,10 +1,18 @@
 import os
 import re
+from os.path import basename
+
+import sublime
+import sublime_plugin
+
+from gosubl.typing import Dict
+from gosubl.typing import List
+from gosubl.typing import Union
+from gosubl.typing import Optional
+
 from gosubl import gs
 from gosubl import gsq
 from gosubl import mg9
-import sublime
-import sublime_plugin
 
 # history_list: is used to set the jump history
 from Default.history_list import get_jump_history_for_view
@@ -54,6 +62,18 @@ EXT_EXCLUDE = frozenset(
 )
 
 
+##############################################################
+# TODO: use the LSP Point/Range style of referring to locations
+# TODO: move all of these to a separate file
+# TODO: add type annotations
+
+# def get_position(view: sublime.View, event: dict = None) -> int:
+#     if event:
+#         return view.window_to_text((event["x"], event["y"]))
+#     else:
+#         return view.sel()[0].begin()
+
+
 class GsDocCommand(sublime_plugin.TextCommand):
     def is_enabled(self):
         return gs.is_go_source_view(self.view)
@@ -67,7 +87,7 @@ class GsDocCommand(sublime_plugin.TextCommand):
         """
 
         view = self.view
-        pt = view.text_point(int(line) - 1, int(column))
+        pt = view.text_point(int(line) - 1, int(column))  # WARN: col - 1 ???
         region_name = 'gosubl.indicator.{}.{}'.format(
             view.id(), line
         )
@@ -156,6 +176,139 @@ class GsDocCommand(sublime_plugin.TextCommand):
         elif mode == "hint":
             callback = self.hint_callback
         mg9.doc(view.file_name(), src, pt, callback)
+
+
+class SourceLocation(object):
+    def __init__(
+        self,
+        filename: str,
+        line: int,
+        col_start: int,
+        col_end: int,
+    ) -> None:
+        self.filename = filename
+        self.line = int(line)
+        self.col_start = int(col_start)
+        self.col_end = int(col_end)
+
+    @classmethod
+    def from_margo(cls, loc: dict) -> "SourceLocation":
+        return SourceLocation(
+            loc["filename"],
+            loc["line"],
+            loc["col_start"],
+            loc["col_end"],
+        )
+
+    def to_margo(self) -> dict:
+        return {
+            "filename": self.filename,
+            "line": self.line,
+            "col_start": self.col_start,
+            "col_end": self.col_end,
+        }
+
+    # TODO: rename
+    def basename(self):
+        return basename(self.filename)
+
+    # TODO: rename
+    def display(self) -> str:
+        return "Filename: {} Line: {} Column: {}".format(
+            self.filename,
+            self.line,
+            self.col_start,
+        )
+
+
+# TODO: move the location of this (only here cuz split view)
+class GsReferencesCommand(sublime_plugin.TextCommand):
+    def is_enabled(self, event: dict = None) -> bool:
+        return gs.is_go_source_view(self.view)
+
+    # WARN: remove
+    def show_output(self, s: str) -> None:
+        gs.show_output(DOMAIN + "-output", s, False, "GsDoc")
+
+    # TODO: should move this to a shared location
+    def jump(
+        self,
+        file_name: str,
+        line: int,
+        column: int,
+        transient: bool = False,
+    ) -> None:
+        """Toggle mark indicator to focus cursor
+        """
+
+        position = "{}:{}:{}".format(file_name, line, column)
+        get_jump_history_for_view(self.view).push_selection(self.view)
+        gs.println("opening {}".format(position))
+        self.view.window().open_file(position, sublime.ENCODED_POSITION)
+
+        if not transient:
+            self._toggle_indicator(file_name, line, column)
+
+    # TODO: fixup type annotations or remove
+    def handle_response(
+        self,
+        locations: List[Dict[str, Union[str, int]]],
+        err: Optional[str],
+    ):
+        if err:
+            self.show_output("// Error: %s" % err)
+        elif not locations:
+            self.show_output("%s: cannot find references" % DOMAIN)
+        else:
+            # Notes:
+            #   Ideal Output format:
+            #   - Definition: [locations]
+            #   - Type Name: [locations...]
+            #
+            # For now lets just use basename(file) -> references
+
+            # filename => locations
+            m = {}  # type: Dict[str, List[SourceLocation]]
+            for loc in locations:
+                name = loc["filename"]
+                if name not in m:
+                    m[name] = []
+                m[name].append(SourceLocation.from_margo(loc))
+
+            # TODO: order the results so that file local references
+            # are listed first
+
+            items = []  # type: List[List[str]]
+            source_locations = []  # type: List[SourceLocation]
+            for fn, locs in m.items():
+                base = basename(fn)
+                for loc in sorted(locs, key=lambda ll: ll.line):
+                    items.append([base, loc.display()])
+                    source_locations.append(loc)
+
+            # TODO: jump to locations as we scroll through the list
+            def callback(idx: int) -> None:
+                if idx >= 0:
+                    loc = source_locations[idx]
+                    self.jump(loc.filename, loc.line, loc.col_start)
+
+            window = sublime.active_window()
+            if window:
+                window.show_quick_panel(items, callback)
+            else:
+                self.show_output("failed to load current window")
+
+    def run(self, edit: sublime.Edit, event: dict = None) -> None:
+        view = self.view
+        if not gs.is_go_source_view(view):
+            return
+
+        pt = gs.sel(view).begin()
+        src = view.substr(sublime.Region(0, view.size()))
+        offset = len(src[:pt].encode("utf-8"))
+
+        mg9.references(view.file_name(), None, offset, self.handle_response)
+        pass
 
 
 class GsBrowseDeclarationsCommand(sublime_plugin.WindowCommand):
