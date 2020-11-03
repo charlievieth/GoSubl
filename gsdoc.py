@@ -246,8 +246,10 @@ class GsReferencesCommand(sublime_plugin.TextCommand):
         gs.println("opening {}".format(position))
         self.view.window().open_file(position, sublime.ENCODED_POSITION)
 
+        # TODO: implement this ???
         if not transient:
-            self._toggle_indicator(file_name, line, column)
+            pass
+            # self._toggle_indicator(file_name, line, column)
 
     # TODO: fixup type annotations or remove
     def handle_response(

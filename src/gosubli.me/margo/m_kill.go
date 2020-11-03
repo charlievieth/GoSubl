@@ -92,3 +92,98 @@ func init() {
 		return &mKill{}
 	})
 }
+
+/*
+// CmdWatch is the global command watch list.
+var CmdWatch cmdWatcher
+
+// cmdWatcher stores a list of commands to watch and/or kill
+type cmdWatcher struct {
+	cmds map[*exec.Cmd]struct{}
+
+	list map[string]*exec.Cmd
+	mu   sync.Mutex
+}
+
+// newCmdWatcher returns a new cmdWatcher
+func newCmdWatcher() *cmdWatcher {
+	return &cmdWatcher{list: make(map[string]*exec.Cmd)}
+}
+
+func (w *cmdWatcher) Remove(cmd *exec.Cmd) {
+	w.mu.Lock()
+	delete(w.cmds, cmd)
+	w.mu.Unlock()
+}
+
+func (w *cmdWatcher) Add(cmd *exec.Cmd) {
+	w.mu.Lock()
+	if w.cmds == nil {
+		w.cmds = make(map[*exec.Cmd]struct{})
+	}
+	w.cmds[cmd] = struct{}{}
+	w.mu.Unlock()
+}
+
+func (w *cmdWatcher) Run(cmd *exec.Cmd) error {
+	w.Add(cmd)
+	defer w.Remove(cmd)
+	err := cmd.Run()
+	return err
+}
+
+// Watch adds a command to the watch list with key id.
+func (cmd *cmdWatcher) Watch(id string, c *exec.Cmd) bool {
+	if id == "" || c == nil {
+		return false
+	}
+	cmd.mu.Lock()
+	if cmd.list == nil {
+		cmd.list = make(map[string]*exec.Cmd)
+	}
+	_, exists := cmd.list[id]
+	if !exists {
+		cmd.list[id] = c
+	}
+	cmd.mu.Unlock()
+	return !exists
+}
+
+// UnWatch removes a command from the watch list.
+func (cmd *cmdWatcher) UnWatch(id string) bool {
+	_, ok := cmd.remove(id)
+	return ok
+}
+
+// Kill, kills the watched command with key id.
+func (cmd *cmdWatcher) Kill(id string) bool {
+	if c, ok := cmd.remove(id); ok {
+		// TODO: Release Process as well?
+		return c.Process.Kill() == nil
+	}
+	return false
+}
+
+func (cmd *cmdWatcher) remove(id string) (c *exec.Cmd, ok bool) {
+	if cmd.list != nil {
+		cmd.mu.Lock()
+		if c, ok = cmd.list[id]; ok {
+			delete(cmd.list, id)
+		}
+		cmd.mu.Unlock()
+	}
+	return
+}
+
+// KillAll, kills and releases all watched commands.
+func (cmd *cmdWatcher) KillAll() {
+	cmd.mu.Lock()
+	for _, c := range cmd.list {
+		if c != nil {
+			c.Process.Kill()
+			c.Process.Release()
+		}
+	}
+	cmd.mu.Unlock()
+}
+*/
