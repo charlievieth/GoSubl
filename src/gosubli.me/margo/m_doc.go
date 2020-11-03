@@ -34,6 +34,7 @@ type FindResponse struct {
 }
 
 func (f *FindRequest) Call() (interface{}, string) {
+	// TODO: use buildutil.MatchContext
 	ctxt := build.Default
 	if f.Env != nil {
 		if s, ok := f.Env["GOPATH"]; ok && isDir(s) {
