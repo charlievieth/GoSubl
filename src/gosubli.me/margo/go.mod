@@ -3,7 +3,7 @@ module gosubli.me/margo
 go 1.15
 
 require (
-	github.com/charlievieth/buildutil v0.0.3
+	github.com/charlievieth/buildutil v0.0.4
 	github.com/charlievieth/gocode v0.0.3
 	github.com/charlievieth/godef v0.0.3
 	github.com/charlievieth/imports v0.0.1

@@ -1,5 +1,7 @@
 github.com/charlievieth/buildutil v0.0.3 h1:szBsPZrcMPZ9aGyOd8xcVtJJuRmY8bBG8l9KWQO/i24=
 github.com/charlievieth/buildutil v0.0.3/go.mod h1:ixnLv8dl9ropX3Bkbt17o7jPob5tS1hU1N96XeFCsIU=
+github.com/charlievieth/buildutil v0.0.4 h1:hTbmCv0M7gtnFtyTSg9NiBVBCp02aSnFdpajzbDeG7I=
+github.com/charlievieth/buildutil v0.0.4/go.mod h1:ixnLv8dl9ropX3Bkbt17o7jPob5tS1hU1N96XeFCsIU=
 github.com/charlievieth/fs v0.0.1 h1:sJqnp1RWguMAojHpyCbZ2KyXNp2ihxGIFPUNb8XDGu8=
 github.com/charlievieth/fs v0.0.1/go.mod h1:74vroF06jvR8XMafvi2CYzs8WruHL1axh/qFx7XN5Xw=
 github.com/charlievieth/gocode v0.0.3 h1:caTsNJSjyC19F3mVmHAFhqtAj71SFbqTUGIah5jhQmc=
