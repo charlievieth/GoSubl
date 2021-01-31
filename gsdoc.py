@@ -1,5 +1,6 @@
 import os
 import re
+import time
 from os.path import basename
 
 import sublime
@@ -74,6 +75,17 @@ EXT_EXCLUDE = frozenset(
 #         return view.sel()[0].begin()
 
 
+def view_is_loaded(view) -> bool:
+    i = 0
+    loading = view.is_loading()
+    while loading and i < 5:
+        if i < 5:
+            i += 1
+            time.sleep(0.05)
+            loading = view.is_loading()
+    return loading
+
+
 class GsDocCommand(sublime_plugin.TextCommand):
     def is_enabled(self):
         return gs.is_go_source_view(self.view)
@@ -81,13 +93,13 @@ class GsDocCommand(sublime_plugin.TextCommand):
     def show_output(self, s):
         gs.show_output(DOMAIN + "-output", s, False, "GsDoc")
 
-    # TODO (CEV): fix me - this doesn't seem to work
-    def _toggle_indicator(self, file_name: str, line: int, column: int,) -> None:
-        """Toggle mark indicator to focus cursor
-        """
-
-        view = self.view
-        pt = view.text_point(int(line) - 1, int(column))  # WARN: col - 1 ???
+    @classmethod
+    def toggle_indicator(cls, view, line: int, column: int,) -> None:
+        if line > 1:
+            line = line - 1
+        if column > 1:
+            column = column - 1
+        pt = view.text_point(line, column)
         region_name = 'gosubl.indicator.{}.{}'.format(
             view.id(), line
         )
@@ -106,6 +118,7 @@ class GsDocCommand(sublime_plugin.TextCommand):
                 lambda: view.erase_regions(region_name),
                 delta + 300
             )
+        pass
 
     def jump(
         self,
@@ -120,10 +133,18 @@ class GsDocCommand(sublime_plugin.TextCommand):
         position = "{}:{}:{}".format(file_name, line, column)
         get_jump_history_for_view(self.view).push_selection(self.view)
         gs.println("opening {}".format(position))
-        self.view.window().open_file(position, sublime.ENCODED_POSITION)
+        # self.view.window().open_file(position, sublime.ENCODED_POSITION)
+        view = self.view.window().open_file(position, sublime.ENCODED_POSITION)
 
         if not transient:
-            self._toggle_indicator(file_name, line, column)
+            # Spin to see if the view has loaded before using a callback
+            if view_is_loaded(view):
+                self.toggle_indicator(view, line, column)
+            else:
+                sublime.set_timeout_async(
+                    lambda: self.toggle_indicator(view, line, column),
+                    300,
+                )
 
     def goto_callback(self, docs, err):
         if err:
@@ -140,28 +161,6 @@ class GsDocCommand(sublime_plugin.TextCommand):
         else:
             self.show_output("%s: cannot find definition" % DOMAIN)
 
-    def parse_doc_hint(self, doc):
-        if "name" not in doc:
-            return None
-        if "pkg" in doc:
-            name = "%s.%s" % (doc["pkg"], doc["name"])
-        else:
-            name = doc["name"]
-        if "src" in doc:
-            src = "\n//\n%s" % doc["src"]
-        else:
-            src = ""
-        return "// %s %s%s" % (name, doc.get("kind", ""), src)
-
-    def hint_callback(self, docs, err):
-        if err:
-            self.show_output("// Error: %s" % err)
-        elif docs:
-            results = [self.parse_doc_hint(d) for d in docs if "name" in d]
-            if results:
-                self.show_output("\n\n\n".join(results).strip())
-        self.show_output("// %s: no docs found" % DOMAIN)
-
     def run(self, _, mode=""):
         view = self.view
         if (not gs.is_go_source_view(view)) or (mode not in ["goto", "hint"]):
@@ -174,10 +173,12 @@ class GsDocCommand(sublime_plugin.TextCommand):
         if mode == "goto":
             callback = self.goto_callback
         elif mode == "hint":
-            callback = self.hint_callback
+            # WARN: remove hint support
+            self.show_output("// Error: hint not supported")
         mg9.doc(view.file_name(), src, pt, callback)
 
 
+# WARN (CEV): maybe move this and any new code to a new file
 class SourceLocation(object):
     def __init__(
         self,
@@ -222,6 +223,7 @@ class SourceLocation(object):
 
 
 # TODO: move the location of this (only here cuz split view)
+# TODO: preview references (see Anaconda package)
 class GsReferencesCommand(sublime_plugin.TextCommand):
     def is_enabled(self, event: dict = None) -> bool:
         return gs.is_go_source_view(self.view)

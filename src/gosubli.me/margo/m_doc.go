@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"go/build"
-	"io/ioutil"
 	"os/exec"
 	"path/filepath"
 	"strconv"
@@ -32,7 +31,9 @@ type FindRequest struct {
 }
 
 type FindResponse struct {
-	Src  string `json:"src"`
+	// CEV: we removed support for doc hints since they're broken
+	// Src  string `json:"src"`
+
 	Pkg  string `json:"pkg"`  // Ignored for now
 	Name string `json:"name"` // Ignored for now
 	Kind string `json:"kind"` // Ignored for now
@@ -108,12 +109,7 @@ func (f *FindRequest) Call() (interface{}, string) {
 		return FindResponse{}, err.Error()
 	}
 
-	src, err := ioutil.ReadFile(loc.Filename)
-	if err != nil {
-		return FindResponse{}, err.Error()
-	}
 	res := FindResponse{
-		Src: string(src),
 		Fn:  loc.Filename,
 		Row: loc.Line - 1,
 		Col: loc.ColStart - 1,
