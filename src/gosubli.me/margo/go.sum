@@ -6,8 +6,6 @@ github.com/charlievieth/fs v0.0.1 h1:sJqnp1RWguMAojHpyCbZ2KyXNp2ihxGIFPUNb8XDGu8
 github.com/charlievieth/fs v0.0.1/go.mod h1:74vroF06jvR8XMafvi2CYzs8WruHL1axh/qFx7XN5Xw=
 github.com/charlievieth/gocode v0.0.3 h1:caTsNJSjyC19F3mVmHAFhqtAj71SFbqTUGIah5jhQmc=
 github.com/charlievieth/gocode v0.0.3/go.mod h1:Qz5qo7amoj0KtMEOwJ3pJoxXgv0nQwxKQEN7N+IEj8w=
-github.com/charlievieth/godef v0.0.3 h1:C7BskiDwmvYms39jWVsN4IC5TJxK+XHthGouMYu1E3Q=
-github.com/charlievieth/godef v0.0.3/go.mod h1:qwi2j1L7RBR8EQ5PWHgQ8GCJZfe3JXsJYUwFbPMIpF4=
 github.com/charlievieth/imports v0.0.1 h1:3nNeTsj6OW8cu42VcHW9OfTM3nGJZD9oRw8kdDUWqAw=
 github.com/charlievieth/imports v0.0.1/go.mod h1:AjwKgsaA2I7Y6VMBh54oaqseEXdmwMQAO9ld4SNqwMA=
 github.com/charlievieth/pkgs v0.0.2 h1:vqPA4s7GRNxza5dqMSw90srovHYnfuwBtr5SzdeWfaM=

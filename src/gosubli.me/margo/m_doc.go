@@ -1,9 +1,17 @@
 package main
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
 	"go/build"
+	"io/ioutil"
+	"os/exec"
+	"path/filepath"
+	"strconv"
 
-	"github.com/charlievieth/godef"
+	"github.com/charlievieth/buildutil"
 )
 
 func init() {
@@ -34,31 +42,81 @@ type FindResponse struct {
 }
 
 func (f *FindRequest) Call() (interface{}, string) {
-	// TODO: use buildutil.MatchContext
-	ctxt := build.Default
+	guruExe, err := exec.LookPath("guru")
+	if err != nil {
+		return FindResponse{}, "please install guru: " +
+			"`go get -u golang.org/x/tools/cmd/guru`"
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	parent := build.Default
 	if f.Env != nil {
 		if s, ok := f.Env["GOPATH"]; ok && isDir(s) {
-			ctxt.GOPATH = s
+			parent.GOPATH = s
 		}
 		if s, ok := f.Env["GOROOT"]; ok && isDir(s) {
-			ctxt.GOROOT = s
+			parent.GOROOT = s
 		}
 		if s := f.Env["GOOS"]; s != "" {
-			ctxt.GOOS = s
+			parent.GOOS = s
 		}
 	}
-	conf := godef.Config{
-		Context: ctxt,
-	}
-	pos, src, err := conf.Define(f.Fn, f.Offset, f.Src)
+
+	ctxt, err := buildutil.MatchContext(&parent, f.Fn, f.Src)
 	if err != nil {
-		return nil, err.Error()
+		return []FindResponse{}, err.Error()
+	}
+	cmd := buildutil.GoCommandContext(
+		ctx, ctxt,
+		guruExe, "-modified", "-json",
+		"definition", fmt.Sprintf("%s:#%d", f.Fn, f.Offset),
+	)
+	cmd.Dir = filepath.Dir(f.Fn)
+
+	var (
+		stdin  bytes.Buffer
+		stdout bytes.Buffer
+		stderr bytes.Buffer
+	)
+
+	stdin.Grow(len(f.Fn) + 32 + len(f.Src))
+	stdin.WriteString(f.Fn)
+	stdin.WriteByte('\n')
+	stdin.WriteString(strconv.Itoa(len(f.Src)))
+	stdin.WriteByte('\n')
+	stdin.WriteString(f.Src)
+
+	cmd.Stdin = &stdin
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		return FindResponse{}, fmt.Sprintf("%s: %s", bytes.TrimSpace(stderr.Bytes()), err)
+	}
+
+	var x struct {
+		Pos string `json:"objpos"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &x); err != nil {
+		return FindResponse{}, err.Error()
+	}
+
+	loc, err := ParseSourceLocation(x.Pos)
+	if err != nil {
+		return FindResponse{}, err.Error()
+	}
+
+	src, err := ioutil.ReadFile(loc.Filename)
+	if err != nil {
+		return FindResponse{}, err.Error()
 	}
 	res := FindResponse{
 		Src: string(src),
-		Fn:  pos.Filename,
-		Row: pos.Line - 1,
-		Col: pos.Column - 1,
+		Fn:  loc.Filename,
+		Row: loc.Line - 1,
+		Col: loc.ColStart - 1,
 	}
 	return []FindResponse{res}, ""
 }
