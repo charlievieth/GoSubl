@@ -3,6 +3,7 @@ from gosubl import ev
 from gosubl import gs
 from gosubl import gsq
 from gosubl import sh
+
 import atexit
 import base64
 import hashlib
@@ -14,6 +15,8 @@ import subprocess
 import threading
 import time
 import uuid
+
+from collections import OrderedDict
 
 DOMAIN = "MarGo"
 REQUEST_PREFIX = "%s.rqst." % DOMAIN
@@ -329,31 +332,56 @@ def install(aso_install_vesion, force_install):
             report_x()
 
 
-class CalltipCache(object):
-    def __init__(self):
-        self.lck = threading.Lock()
-        self.pos = 0
-        self.src = ""
-        self.fn = ""
-        self.res = []
-        self.err = ""
+class LRUCache(OrderedDict):
+    def __init__(self, maxsize=128) -> None:
+        self._maxsize = maxsize
+        self._lock = threading.RLock()
+        super().__init__()
 
-    def get(self, fn, src, pos):
-        with self.lck:
-            if pos == self.pos and fn == self.fn and src == self.src:
-                return self.res, self.err, True
-        return None, None, False
+    @property
+    def maxsize(self) -> int:
+        return self._maxsize
 
-    def set(self, fn, src, pos, res, err):
-        with self.lck:
-            self.fn = fn
-            self.src = src
-            self.pos = pos
-            self.res = res
-            self.err = err
+    def __getitem__(self, key):
+        with self._lock:
+            value = OrderedDict.__getitem__(self, key)
+            # popitem() deletes the item from it's ordered map before
+            # caling dict.pop() so ignore the move_to_end() exception
+            try:
+                OrderedDict.move_to_end(self, key, last=False)
+            except KeyError:
+                pass
+            return value
+
+    def __setitem__(self, key, value):
+        with self._lock:
+            if len(self) >= self._maxsize and key not in self:
+                OrderedDict.popitem(self, last=True)
+            OrderedDict.__setitem__(self, key, value)
+            OrderedDict.move_to_end(self, key, last=False)
+
+    def __delitem__(self, key):
+        with self._lock:
+            OrderedDict.__delitem__(self, key)
+
+    def __contains__(self, key):
+        with self._lock:
+            return OrderedDict.__contains__(self, key)
+
+    def __iter__(self):
+        with self._lock:
+            return OrderedDict.__iter__(self)
+
+    def __reversed__(self):
+        with self._lock:
+            return OrderedDict.__reversed__(self)
+
+    def clear(self):
+        with self._lock:
+            OrderedDict.clear(self)
 
 
-calltip_cache = CalltipCache()
+calltip_cache = LRUCache(maxsize=128)
 
 
 def calltip(fn, src, pos, quiet, f):
@@ -361,16 +389,18 @@ def calltip(fn, src, pos, quiet, f):
     if not quiet:
         tid = gs.begin(DOMAIN, "Fetching calltips")
 
+    cache_key = (fn, src, pos)
+
     def cb(res, err):
         if tid:
             gs.end(tid)
 
         res = gs.dval(res.get("Candidates"), [])
-        calltip_cache.set(fn, src, pos, res, err)
+        calltip_cache[cache_key] = (res, err)
         f(res, err)
 
-    res, err, ok = calltip_cache.get(fn, src, pos)
-    if ok:
+    if cache_key in calltip_cache:
+        res, err = calltip_cache[cache_key]
         if tid:
             gs.end(tid)
         f(res, err)
