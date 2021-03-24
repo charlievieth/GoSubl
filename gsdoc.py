@@ -1,7 +1,6 @@
-import os
 import re
 import time
-from os.path import basename
+from os import path
 
 import sublime
 import sublime_plugin
@@ -209,7 +208,7 @@ class SourceLocation(object):
     @property
     def basename(self) -> str:
         if not self._basename:
-            self._basename = basename(self.filename)
+            self._basename = path.basename(self.filename)
         return self._basename
 
     def __repr__(self) -> str:
@@ -315,7 +314,7 @@ class GsBrowseDeclarationsCommand(sublime_plugin.WindowCommand):
                         if i == 0:
                             self.present_current()
                         elif i >= 1:
-                            self.present("", "", os.path.dirname(m[ents[i]]))
+                            self.present("", "", path.dirname(m[ents[i]]))
 
                     gs.show_quick_panel(ents, cb)
                 else:
@@ -328,7 +327,7 @@ class GsBrowseDeclarationsCommand(sublime_plugin.WindowCommand):
         view = gs.active_valid_go_view(win=self.window, strict=False)
         if view:
             if view.file_name():
-                pkg_dir = os.path.dirname(view.file_name())
+                pkg_dir = path.dirname(view.file_name())
             vfn = gs.view_fn(view)
             src = gs.view_src(view)
         else:
@@ -428,11 +427,11 @@ def show_pkgfiles(dirname):
     m = {}
 
     try:
-        dirname = os.path.abspath(dirname)
+        dirname = path.abspath(dirname)
         for fn in gs.list_dir_tree(
             dirname, ext_filter, gs.setting("fn_exclude_prefixes", [])
         ):
-            name = os.path.relpath(fn, dirname).replace("\\", "/")
+            name = path.relpath(fn, dirname).replace("\\", "/")
             m[name] = fn
             ents.append(name)
     except Exception as ex:
@@ -443,7 +442,7 @@ def show_pkgfiles(dirname):
 
         try:
             s = " ../  ( current: %s )" % dirname
-            m[s] = os.path.join(dirname, "..")
+            m[s] = path.join(dirname, "..")
             ents.insert(0, s)
         except Exception:
             pass
@@ -451,7 +450,7 @@ def show_pkgfiles(dirname):
         def cb(i, win):
             if i >= 0:
                 fn = m[ents[i]]
-                if os.path.isdir(fn):
+                if path.isdir(fn):
                     win.run_command("gs_browse_files", {"dir": fn})
                 else:
                     gs.focus(fn, 0, 0, win)
