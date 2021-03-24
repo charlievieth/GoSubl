@@ -320,7 +320,7 @@ class GsShowCallTip(sublime_plugin.TextCommand):
                         pfx = "func("
                         typ = c["type"]
                         if typ.startswith(pfx):
-                            s = "func %s(%s" % (c["name"], typ[len(pfx) :])
+                            s = "func %s(%s" % (c["name"], typ[len(pfx):])
                         else:
                             s = "%s: %s" % (c["name"], typ)
 
