@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/charlievieth/imports"
+	"github.com/charlievieth/imports/gocommand"
 	"github.com/golang/groupcache/lru"
 	"golang.org/x/sync/singleflight"
 )
@@ -63,6 +64,9 @@ func (f *FormatRequest) callTimeout() (*FormatResponse, string) {
 		Comments:    true,
 		Fragment:    true,
 		SimplifyAST: true,
+		Env: &imports.ProcessEnv{
+			GocmdRunner: &gocommand.Runner{},
+		},
 	}
 	start := time.Now()
 	src := []byte(f.Src)
@@ -130,6 +134,17 @@ func (*FormatRequest) recoverErr(err interface{}) error {
 	}
 }
 
+// var importsOptions = &imports.Options{
+// 	TabWidth:    8,
+// 	TabIndent:   true,
+// 	Comments:    true,
+// 	Fragment:    true,
+// 	SimplifyAST: true,
+// 	Env: &imports.ProcessEnv{
+// 		GocmdRunner: &gocommand.Runner{},
+// 	},
+// }
+
 func (f *FormatRequest) doCall() (res *FormatResponse, err error) {
 	defer func() {
 		if e := recover(); e != nil {
@@ -138,12 +153,16 @@ func (f *FormatRequest) doCall() (res *FormatResponse, err error) {
 		}
 	}()
 
+	// TODO: use a global Options var
 	opts := imports.Options{
-		TabWidth:    f.Tabwidth,
-		TabIndent:   f.TabIndent,
+		TabWidth:    8,
+		TabIndent:   true,
 		Comments:    true,
 		Fragment:    true,
 		SimplifyAST: true,
+		Env: &imports.ProcessEnv{
+			GocmdRunner: &gocommand.Runner{},
+		},
 	}
 	src := []byte(f.Src)
 
@@ -161,7 +180,7 @@ func (f *FormatRequest) doCall() (res *FormatResponse, err error) {
 
 var (
 	formatRequestGroup   singleflight.Group
-	formatRequestCache   = lru.New(64)
+	formatRequestCache   = lru.New(128)
 	formatRequestCacheMu sync.Mutex
 )
 
