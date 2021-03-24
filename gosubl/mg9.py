@@ -397,7 +397,14 @@ def calltip(fn, src, pos, quiet, f):
                 pos = i - 1
             break
 
-    cache_key = (fn, src, pos)
+    cache_key = (fn, hash(src), len(src), pos)
+
+    if cache_key in calltip_cache:
+        res, err = calltip_cache[cache_key]
+        if tid:
+            gs.end(tid)
+        f(res, err)
+        return
 
     def cb(res, err):
         if tid:
@@ -406,13 +413,6 @@ def calltip(fn, src, pos, quiet, f):
         res = gs.dval(res.get("Candidates"), [])
         calltip_cache[cache_key] = (res, err)
         f(res, err)
-
-    if cache_key in calltip_cache:
-        res, err = calltip_cache[cache_key]
-        if tid:
-            gs.end(tid)
-        f(res, err)
-        return
 
     return acall("gocode_calltip", _complete_opts(fn, src, pos, True), cb)
 
