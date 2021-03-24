@@ -242,27 +242,6 @@ class GsReferencesCommand(sublime_plugin.TextCommand):
     def show_output(self, s: str) -> None:
         gs.show_output(DOMAIN + "-output", s, False, "GsDoc")
 
-    # TODO: should move this to a shared location
-    def jump(
-        self,
-        file_name: str,
-        line: int,
-        column: int,
-        transient: bool = False,
-    ) -> None:
-        """Toggle mark indicator to focus cursor
-        """
-
-        position = "{}:{}:{}".format(file_name, line, column)
-        get_jump_history_for_view(self.view).push_selection(self.view)
-        gs.println("opening {}".format(position))
-        self.view.window().open_file(position, sublime.ENCODED_POSITION)
-
-        # TODO: implement this ???
-        if not transient:
-            pass
-            # self._toggle_indicator(file_name, line, column)
-
     # TODO: fixup type annotations or remove
     def handle_response(
         self,
