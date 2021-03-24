@@ -6,6 +6,7 @@ import sublime
 import sublime_plugin
 
 from .explore_panel import ExplorerPanel
+from .explore_panel import Jumper
 
 from gosubl.typing import Dict
 from gosubl.typing import List
@@ -15,9 +16,6 @@ from gosubl.typing import Optional
 from gosubl import gs
 from gosubl import gsq
 from gosubl import mg9
-
-# history_list: is used to set the jump history
-from Default.history_list import get_jump_history_for_view
 
 DOMAIN = "GsDoc"
 
@@ -94,71 +92,16 @@ class GsDocCommand(sublime_plugin.TextCommand):
     def show_output(self, s):
         gs.show_output(DOMAIN + "-output", s, False, "GsDoc")
 
-    @classmethod
-    def toggle_indicator(cls, view, line: int, column: int,) -> None:
-        if line > 1:
-            line = line - 1
-        if column > 1:
-            column = column - 1
-        pt = view.text_point(line, column)
-        region_name = 'gosubl.indicator.{}.{}'.format(
-            view.id(), line
-        )
-        gs.println('creating region: {}'.format(region_name))
-
-        for i in range(3):
-            delta = 300 * i * 2
-            sublime.set_timeout(lambda: view.add_regions(
-                region_name,
-                [sublime.Region(pt, pt)],
-                'comment',
-                'bookmark',
-                sublime.DRAW_EMPTY_AS_OVERWRITE
-            ), delta)
-            sublime.set_timeout(
-                lambda: view.erase_regions(region_name),
-                delta + 300
-            )
-        pass
-
-    def jump(
-        self,
-        file_name: str,
-        line: int,
-        column: int,
-        transient: bool = False,
-    ) -> None:
-        """Toggle mark indicator to focus cursor
-        """
-
-        position = "{}:{}:{}".format(file_name, line, column)
-        get_jump_history_for_view(self.view).push_selection(self.view)
-        gs.println("opening {}".format(position))
-        # self.view.window().open_file(position, sublime.ENCODED_POSITION)
-        view = self.view.window().open_file(position, sublime.ENCODED_POSITION)
-
-        if not transient:
-            # Spin to see if the view has loaded before using a callback
-            if view_is_loaded(view):
-                self.toggle_indicator(view, line, column)
-            else:
-                sublime.set_timeout_async(
-                    lambda: self.toggle_indicator(view, line, column),
-                    300,
-                )
-
     def goto_callback(self, docs, err):
         if err:
             self.show_output("// Error: %s" % err)
         elif len(docs) and "fn" in docs[0]:
             d = docs[0]
-
             fn = d.get("fn", "")
-            row = d.get("row", 0) + 1
-            col = d.get("col", 0) + 1
             if fn:
-                self.jump(fn, row, col)
-            return
+                row = d.get("row", 0) + 1
+                col = d.get("col", 0) + 1
+                Jumper(self.view, "{}:{}:{}".format(fn, row, col)).jump()
         else:
             self.show_output("%s: cannot find definition" % DOMAIN)
 
