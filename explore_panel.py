@@ -3,8 +3,9 @@
 
 import sublime
 
-from typing import List
 from Default.history_list import get_jump_history_for_view
+
+from .gosubl.typing import List
 
 
 class ExplorerPanel:
@@ -33,6 +34,16 @@ class ExplorerPanel:
         ]
 
     So we can nest as many levels as we want
+
+    NB (CEV): the format of usages/options is (Anaconda/commands/find_usages.py):
+
+        usages.append({
+            'title': usage[0],
+            'location': 'File: {} Line: {} Column: {}'.format(
+                usage[1], usage[2], usage[3]
+            ),
+            'position': '{}:{}:{}'.format(usage[1], usage[2], usage[3])
+        })
     """
 
     def __init__(self, view: sublime.View, options: List) -> None:
@@ -109,6 +120,7 @@ class Jumper:
     """Jump to the specified file line and column making an indicator to toggle"""
 
     def __init__(self, view: sublime.View, position: str) -> None:
+        # CEV: position is: "File:Line:Column"
         self.position = position
         self.view = view
 
@@ -129,7 +141,7 @@ class Jumper:
 
         path, line, column = self.position.rsplit(':', 2)
         pt = self.view.text_point(int(line) - 1, int(column))
-        region_name = 'anaconda.indicator.{}.{}'.format(self.view.id(), line)
+        region_name = 'gosubl.indicator.{}.{}'.format(self.view.id(), line)
 
         for i in range(3):
             delta = 300 * i * 2

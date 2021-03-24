@@ -6,6 +6,8 @@ from os.path import basename
 import sublime
 import sublime_plugin
 
+from .explore_panel import ExplorerPanel
+
 from gosubl.typing import Dict
 from gosubl.typing import List
 from gosubl.typing import Union
@@ -168,6 +170,8 @@ class GsDocCommand(sublime_plugin.TextCommand):
 
         pt = gs.sel(view).begin()
         src = view.substr(sublime.Region(0, view.size()))
+        # WARN (CEV): should this be done here or should
+        # we do it in the Go code instead?
         pt = len(src[:pt].encode("utf-8"))
 
         if mode == "goto":
@@ -188,6 +192,7 @@ class SourceLocation(object):
         col_end: int,
     ) -> None:
         self.filename = filename
+        self._basename = None  # type: Optional[str]
         self.line = int(line)
         self.col_start = int(col_start)
         self.col_end = int(col_end)
@@ -201,25 +206,31 @@ class SourceLocation(object):
             loc["col_end"],
         )
 
-    def to_margo(self) -> dict:
-        return {
-            "filename": self.filename,
-            "line": self.line,
-            "col_start": self.col_start,
-            "col_end": self.col_end,
-        }
+    @property
+    def basename(self) -> str:
+        if not self._basename:
+            self._basename = basename(self.filename)
+        return self._basename
 
-    # TODO: rename
-    def basename(self):
-        return basename(self.filename)
-
-    # TODO: rename
-    def display(self) -> str:
-        return "Filename: {} Line: {} Column: {}".format(
-            self.filename,
-            self.line,
-            self.col_start,
+    def __repr__(self) -> str:
+        return "SourceLocation(filename={}, line={}, col_start={}, col_end={})".format(
+            self.filename, self.line, self.col_start, self.col_end,
         )
+
+    def position(self) -> str:
+        return "{}:{}:{}".format(self.filename, self.line, self.col_start)
+
+    def location(self) -> str:
+        return 'File: {} Line: {} Column: {}'.format(
+            self.filename, self.line, self.col_start,
+        )
+
+    def usage(self) -> Dict[str, str]:
+        return {
+            'title': '{}:{}:{}'.format(self.basename, self.line, self.col_start),
+            'location': self.location(),
+            'position': self.position(),
+        }
 
 
 # TODO: move the location of this (only here cuz split view)
@@ -264,43 +275,10 @@ class GsReferencesCommand(sublime_plugin.TextCommand):
         elif not locations:
             self.show_output("%s: cannot find references" % DOMAIN)
         else:
-            # Notes:
-            #   Ideal Output format:
-            #   - Definition: [locations]
-            #   - Type Name: [locations...]
-            #
-            # For now lets just use basename(file) -> references
+            # TODO: add information about the type in the 'title'
 
-            # filename => locations
-            m = {}  # type: Dict[str, List[SourceLocation]]
-            for loc in locations:
-                name = loc["filename"]
-                if name not in m:
-                    m[name] = []
-                m[name].append(SourceLocation.from_margo(loc))
-
-            # TODO: order the results so that file local references
-            # are listed first
-
-            items = []  # type: List[List[str]]
-            source_locations = []  # type: List[SourceLocation]
-            for fn, locs in m.items():
-                base = basename(fn)
-                for loc in sorted(locs, key=lambda ll: ll.line):
-                    items.append([base, loc.display()])
-                    source_locations.append(loc)
-
-            # TODO: jump to locations as we scroll through the list
-            def callback(idx: int) -> None:
-                if idx >= 0:
-                    loc = source_locations[idx]
-                    self.jump(loc.filename, loc.line, loc.col_start)
-
-            window = sublime.active_window()
-            if window:
-                window.show_quick_panel(items, callback)
-            else:
-                self.show_output("failed to load current window")
+            usages = [SourceLocation.from_margo(x).usage() for x in locations]
+            ExplorerPanel(self.view, usages).show([], True)
 
     def run(self, edit: sublime.Edit, event: dict = None) -> None:
         view = self.view
@@ -309,6 +287,7 @@ class GsReferencesCommand(sublime_plugin.TextCommand):
 
         pt = gs.sel(view).begin()
         src = view.substr(sublime.Region(0, view.size()))
+        # WARN (CEV): do we want to do this here or in the Go code ???
         offset = len(src[:pt].encode("utf-8"))
 
         mg9.references(view.file_name(), None, offset, self.handle_response)
