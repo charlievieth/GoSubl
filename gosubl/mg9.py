@@ -389,6 +389,14 @@ def calltip(fn, src, pos, quiet, f):
     if not quiet:
         tid = gs.begin(DOMAIN, "Fetching calltips")
 
+    # Move pos to the end of the symbol to improve cache performance
+    for i in range(pos, len(src)):
+        c = src[i]
+        if not c.isalnum() and c != '_':
+            if i > pos:
+                pos = i - 1
+            break
+
     cache_key = (fn, src, pos)
 
     def cb(res, err):

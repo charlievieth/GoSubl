@@ -19,6 +19,12 @@ SNIPPET_VAR_PAT = re.compile(r"\$\{([a-zA-Z]\w*)\}")
 
 HINT_KEY = "%s.completion-hint" % DOMAIN
 
+GO_TOKENS = frozenset([
+    "=", "]", "*", "^", "&", "<", ")", "+", "%", ":", "|",
+    "[", ",", "-", ">", "/", "}", "(", ";", ".", "{", "!",
+    "\"", "'", " ", "\n", "\t", "\v", "\r",
+])
+
 
 def snippet_match(ctx, m):
     try:
@@ -295,6 +301,14 @@ class GsShowCallTip(sublime_plugin.TextCommand):
     def run(self, edit, set_status=False):
         view = self.view
 
+        fn = view.file_name()
+        src = gs.view_src(view)
+        pos = gs.sel(view).begin()
+
+        if src[pos] in GO_TOKENS:
+            view.erase_status(HINT_KEY)
+            return
+
         def f(cl, err):
             def f2(cl, err):
                 c = {}
@@ -323,9 +337,6 @@ class GsShowCallTip(sublime_plugin.TextCommand):
 
             sublime.set_timeout(lambda: f2(cl, err), 0)
 
-        fn = view.file_name()
-        src = gs.view_src(view)
-        pos = gs.sel(view).begin()
         mg9.calltip(fn, src, pos, set_status, f)
 
 
