@@ -305,7 +305,7 @@ class GsShowCallTip(sublime_plugin.TextCommand):
         src = gs.view_src(view)
         pos = gs.sel(view).begin()
 
-        if src[pos] in GO_TOKENS:
+        if pos < 0 or pos >= len(src) or src[pos] in GO_TOKENS:
             view.erase_status(HINT_KEY)
             return
 
