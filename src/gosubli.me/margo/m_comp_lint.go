@@ -99,14 +99,14 @@ func (c *CompLintRequest) Compile(src []byte) *CompLintReport {
 	var args []string
 	switch {
 	case strings.HasSuffix(c.Filename, "_test.go"):
-		args = []string{"test", "-c", "-i", "-o", os.DevNull}
+		args = []string{"test", "-c", "-o", os.DevNull}
 	case pkgname == "main":
-		args = []string{"build", "-i"}
+		args = []string{"build"}
 		if extra := c.BuildOutput(); len(extra) != 0 {
 			args = append(args, extra...)
 		}
 	default:
-		args = []string{"install", "-i"}
+		args = []string{"install"}
 	}
 
 	cmd := buildutil.GoCommand(ctxt, "go", args...)
