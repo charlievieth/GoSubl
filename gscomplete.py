@@ -1,10 +1,9 @@
+import re
 from gosubl import gs
 from gosubl import mg9
 from os.path import basename
 from os.path import dirname
-import json
-import os
-import re
+
 import sublime
 import sublime_plugin
 
@@ -19,11 +18,39 @@ SNIPPET_VAR_PAT = re.compile(r"\$\{([a-zA-Z]\w*)\}")
 
 HINT_KEY = "%s.completion-hint" % DOMAIN
 
-GO_TOKENS = frozenset([
-    "=", "]", "*", "^", "&", "<", ")", "+", "%", ":", "|",
-    "[", ",", "-", ">", "/", "}", "(", ";", ".", "{", "!",
-    "\"", "'", " ", "\n", "\t", "\v", "\r",
-])
+GO_TOKENS = frozenset(
+    [
+        "=",
+        "]",
+        "*",
+        "^",
+        "&",
+        "<",
+        ")",
+        "+",
+        "%",
+        ":",
+        "|",
+        "[",
+        ",",
+        "-",
+        ">",
+        "/",
+        "}",
+        "(",
+        ";",
+        ".",
+        "{",
+        "!",
+        "\"",
+        "'",
+        " ",
+        "\n",
+        "\t",
+        "\v",
+        "\r",
+    ]
+)
 
 
 def snippet_match(ctx, m):
@@ -171,8 +198,7 @@ class GoSublime(sublime_plugin.EventListener):
         return r.end() if r and r.end() < end else -1
 
     def complete(self, fn, offset, src, func_name_only):
-        """Go completion via gocode (called from mg9.py).
-        """
+        """Go completion via gocode (called from mg9.py)."""
         comps = []
         autocomplete_tests = gs.setting("autocomplete_tests", False)
         autocomplete_closures = gs.setting("autocomplete_closures", False)
@@ -320,7 +346,7 @@ class GsShowCallTip(sublime_plugin.TextCommand):
                         pfx = "func("
                         typ = c["type"]
                         if typ.startswith(pfx):
-                            s = "func %s(%s" % (c["name"], typ[len(pfx):])
+                            s = "func %s(%s" % (c["name"], typ[len(pfx) :])
                         else:
                             s = "%s: %s" % (c["name"], typ)
 
