@@ -1,11 +1,14 @@
 # Copyright (C) 2013 ~ 2016 - Oscar Campos <oscar.campos@member.fsf.org>
 # This program is Free Software see LICENSE file for details
 
+from time import sleep
+
 import sublime
 
 from Default.history_list import get_jump_history_for_view
 
 from .gosubl.typing import List
+from .gosubl.typing import Optional
 
 
 class ExplorerPanel:
@@ -119,6 +122,8 @@ class ExplorerPanel:
 class Jumper:
     """Jump to the specified file line and column making an indicator to toggle"""
 
+    new_view: Optional[sublime.View] = None
+
     def __init__(self, view: sublime.View, position: str) -> None:
         # CEV: position is: "File:Line:Column"
         self.position = position
@@ -132,21 +137,33 @@ class Jumper:
             flags |= sublime.TRANSIENT
 
         get_jump_history_for_view(self.view).push_selection(self.view)
-        sublime.active_window().open_file(self.position, flags)
-        if not transient:
-            self._toggle_indicator()
+        self.new_view = sublime.active_window().open_file(
+            self.position,
+            flags,
+        )
+        if not transient and self.new_view:
+            sublime.set_timeout_async(self._toggle_indicator, 0)
 
     def _toggle_indicator(self) -> None:
         """Toggle mark indicator to focus the cursor"""
 
+        view = self.new_view
+        if view is None:
+            return
+
         path, line, column = self.position.rsplit(':', 2)
-        pt = self.view.text_point(int(line) - 1, int(column))
-        region_name = 'gosubl.indicator.{}.{}'.format(self.view.id(), line)
+        if not view_is_loaded(view):
+            view = sublime.active_window().find_open_file(path)
+            if view is None:
+                return
+
+        pt = view.text_point(int(line) - 1, int(column))
+        region_name = 'gosubl.indicator.{}.{}'.format(view.id(), line)
 
         for i in range(3):
             delta = 300 * i * 2
             sublime.set_timeout(
-                lambda: self.view.add_regions(
+                lambda: view.add_regions(
                     region_name,
                     [sublime.Region(pt, pt)],
                     'comment',
@@ -156,5 +173,15 @@ class Jumper:
                 delta,
             )
             sublime.set_timeout(
-                lambda: self.view.erase_regions(region_name), delta + 300
+                lambda: view.erase_regions(region_name), delta + 300
             )
+
+
+def view_is_loaded(view: sublime.View) -> bool:
+    i = 0
+    loading = view.is_loading()
+    while loading and i < 5:
+        i += 1
+        sleep(0.05)
+        loading = view.is_loading()
+    return not loading

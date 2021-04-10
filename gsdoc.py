@@ -74,17 +74,6 @@ EXT_EXCLUDE = frozenset(
 #         return view.sel()[0].begin()
 
 
-def view_is_loaded(view) -> bool:
-    i = 0
-    loading = view.is_loading()
-    while loading and i < 5:
-        if i < 5:
-            i += 1
-            time.sleep(0.05)
-            loading = view.is_loading()
-    return loading
-
-
 class GsDocCommand(sublime_plugin.TextCommand):
     def is_enabled(self):
         return gs.is_go_source_view(self.view)
