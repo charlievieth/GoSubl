@@ -122,12 +122,13 @@ class ExplorerPanel:
 class Jumper:
     """Jump to the specified file line and column making an indicator to toggle"""
 
-    new_view: Optional[sublime.View] = None
+    __slots__ = "position", "view", "new_view"
 
     def __init__(self, view: sublime.View, position: str) -> None:
         # CEV: position is: "File:Line:Column"
         self.position = position
         self.view = view
+        self.new_view: Optional[sublime.View] = None
 
     def jump(self, transient: bool = False) -> None:
         """Jump to the selection"""
