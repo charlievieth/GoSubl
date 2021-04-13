@@ -2,12 +2,12 @@
 	{
 		"keys": ["ctrl+.", "ctrl+1"],
 		"command": "open_file",
-		"args": { "file": "${packages}/GoSublime/README.md" }
+		"args": { "file": "${packages}/GoSubl/README.md" }
 	},
 	{
 		"keys": ["ctrl+.", "ctrl+2"],
 		"command": "open_file",
-		"args": { "file": "${packages}/GoSublime/USAGE.md" }
+		"args": { "file": "${packages}/GoSubl/USAGE.md" }
 	},
 	{
 		"keys": ["ctrl+.", "ctrl+3"],
@@ -16,7 +16,7 @@
 	{
 		"keys": ["ctrl+.", "ctrl+4"],
 		"command": "open_file",
-		"args": { "file": "${packages}/GoSublime/GoSublime.sublime-settings" }
+		"args": { "file": "${packages}/GoSubl/GoSublime.sublime-settings" }
 	},
 	{
 		"keys": ["ctrl+.", "ctrl+5"],

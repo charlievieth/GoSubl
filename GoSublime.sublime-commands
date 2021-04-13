@@ -119,7 +119,7 @@
 		"caption": "GoSublime: Default Settings",
 		"command": "open_file",
 		"args": {
-			"file": "${packages}/GoSublime/GoSublime.sublime-settings"
+			"file": "${packages}/GoSubl/GoSublime.sublime-settings"
 		}
 	},
 	{
@@ -133,35 +133,35 @@
 		"caption": "GoSublime: Changes & Announcements",
 		"command": "open_file",
 		"args": {
-			"file": "${packages}/GoSublime/CHANGELOG.md"
+			"file": "${packages}/GoSubl/CHANGELOG.md"
 		}
 	},
 	{
 		"caption": "GoSublime: Read Me",
 		"command": "open_file",
 		"args": {
-			"file": "${packages}/GoSublime/README.md"
+			"file": "${packages}/GoSubl/README.md"
 		}
 	},
 	{
 		"caption": "GoSublime: Usage & Tips",
 		"command": "open_file",
 		"args": {
-			"file": "${packages}/GoSublime/USAGE.md"
+			"file": "${packages}/GoSubl/USAGE.md"
 		}
 	},
 	{
 		"caption": "GoSublime: Authors & Contributors",
 		"command": "open_file",
 		"args": {
-			"file": "${packages}/GoSublime/AUTHORS.md"
+			"file": "${packages}/GoSubl/AUTHORS.md"
 		}
 	},
 	{
 		"caption": "GoSublime: License (MIT)",
 		"command": "open_file",
 		"args": {
-			"file": "${packages}/GoSublime/LICENSE.md"
+			"file": "${packages}/GoSubl/LICENSE.md"
 		}
 	},
 	{
