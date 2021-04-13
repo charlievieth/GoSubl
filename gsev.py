@@ -28,8 +28,10 @@ class EV(sublime_plugin.EventListener):
     def on_activated(self, view: sublime.View) -> None:
         if view:
             do_sync_active_view(view)
-            if gs.is_go_source_view(view) and is_gohtml_view(view):
-                sublime.set_timeout(lambda: do_set_gohtml_syntax(view), 0)
+            if gs.is_go_source_view(view):
+                enforce_go_tab_size(view)
+                if is_gohtml_view(view):
+                    sublime.set_timeout(lambda: do_set_gohtml_syntax(view), 0)
 
     def on_load(self, view: sublime.View) -> None:
         if view and gs.is_go_source_view(view):
