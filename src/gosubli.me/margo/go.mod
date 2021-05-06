@@ -3,10 +3,10 @@ module gosubli.me/margo
 go 1.15
 
 require (
-	github.com/charlievieth/buildutil v0.0.4
-	github.com/charlievieth/gocode v0.0.3
+	github.com/charlievieth/buildutil v0.0.5
+	github.com/charlievieth/gocode v0.0.4
 	github.com/charlievieth/imports v0.0.3
-	github.com/charlievieth/pkgs v0.0.2
+	github.com/charlievieth/pkgs v0.0.3
 	github.com/charlievieth/xtools v0.0.0-20210201183824-f7efff3cf2e5
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e
 	golang.org/x/mod v0.4.2 // indirect
