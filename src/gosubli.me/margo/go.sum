@@ -4,8 +4,8 @@ github.com/charlievieth/buildutil v0.0.5 h1:vW1+gHsk4fkh2+wNVviPUxdBvKJreNmkhK3y
 github.com/charlievieth/buildutil v0.0.5/go.mod h1:ixnLv8dl9ropX3Bkbt17o7jPob5tS1hU1N96XeFCsIU=
 github.com/charlievieth/fs v0.0.1 h1:sJqnp1RWguMAojHpyCbZ2KyXNp2ihxGIFPUNb8XDGu8=
 github.com/charlievieth/fs v0.0.1/go.mod h1:74vroF06jvR8XMafvi2CYzs8WruHL1axh/qFx7XN5Xw=
-github.com/charlievieth/gocode v0.0.4 h1:rMtZ1QC2sRMRKAwXTJ1JL6BXyfVY9mJIBKq+YjHu8nI=
-github.com/charlievieth/gocode v0.0.4/go.mod h1:UalAu3LIYt8M1CGm6yXqWwBY1Bx/ixOHHVQdInwTDrE=
+github.com/charlievieth/gocode v0.0.5 h1:bG5RhNdt28Tbncc/evVe6n/QHCBjRSP2PZNPmqcjqYM=
+github.com/charlievieth/gocode v0.0.5/go.mod h1:UalAu3LIYt8M1CGm6yXqWwBY1Bx/ixOHHVQdInwTDrE=
 github.com/charlievieth/imports v0.0.3 h1:iTlzD+wwnlcTAI2A5Y/kR2fuEW2vwLZ2Zpz9uofZn/U=
 github.com/charlievieth/imports v0.0.3/go.mod h1:9230RlH/Ht0ae3kdId1D8T3DOp1t0B8lG7xK3f50e9c=
 github.com/charlievieth/pkgs v0.0.3 h1:SYwHO5R0oGPZPvfbTj65XWnVB9/i4OU58pLzO7XTTsI=
@@ -15,8 +15,9 @@ github.com/charlievieth/xtools v0.0.0-20210201183824-f7efff3cf2e5/go.mod h1:gWU0
 github.com/davecgh/go-spew v0.0.0-20161028175848-04cdfd42973b/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e h1:1r7pUrabqp18hOBcwBwiTsbnFeTZHV9eER/QT5JVZxY=
 github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e/go.mod h1:cIg4eruTrX1D+g88fzRXU5OdNfaM+9IcxsU14FzY7Hc=
+github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da h1:oI5xCqsCo564l8iNU+DwB5epxmsaqB+rhGL0m5jtYqE=
+github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da/go.mod h1:cIg4eruTrX1D+g88fzRXU5OdNfaM+9IcxsU14FzY7Hc=
 github.com/google/go-cmp v0.5.1/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
 github.com/google/renameio v0.1.0/go.mod h1:KWCgfxg9yswjAJkECMjeO8J8rahYeXnNhOm40UhjYkI=
 github.com/google/safehtml v0.0.2/go.mod h1:L4KWwDsUJdECRAEpZoBn3O64bQaywRscowZjJAzjHnU=
