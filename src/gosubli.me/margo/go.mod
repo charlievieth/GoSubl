@@ -4,7 +4,7 @@ go 1.15
 
 require (
 	github.com/charlievieth/buildutil v0.0.5
-	github.com/charlievieth/gocode v0.0.5
+	github.com/charlievieth/gocode v0.0.6
 	github.com/charlievieth/imports v0.0.3
 	github.com/charlievieth/pkgs v0.0.3
 	github.com/charlievieth/xtools v0.0.0-20210201183824-f7efff3cf2e5
