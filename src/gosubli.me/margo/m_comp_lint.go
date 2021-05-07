@@ -35,7 +35,7 @@ type CompLintReport struct {
 	Errors        []CompileError `json:"errors,omitempty"`
 }
 
-var compRe = regexp.MustCompile(`(?m)^(?P<file>[^:#]+\.go)\:(?P<row>\d+)\:(?:(?P<col>\d+)\:)?\s*(?P<msg>.+)$`)
+var compRe = regexp.MustCompile(`(?m)^([a-zA-Z]?:?[^:]+):(\d+):?(\d+)?:? (.+)$`)
 
 func (r *CompLintReport) ParseErrors(dirname string, out []byte) {
 	const (
@@ -55,22 +55,30 @@ func (r *CompLintReport) ParseErrors(dirname string, out []byte) {
 		r.TopLevelError = string(first)
 	}
 
-	matches := compRe.FindAllSubmatch(out, -1)
-	for _, m := range matches {
-		if len(m) != SubmatchCount {
+	lines := bytes.Split(out, []byte{'\n'})
+	for i := 0; i < len(lines); i++ {
+		line := string(lines[i])
+		m := compRe.FindStringSubmatch(line)
+		if m == nil {
 			continue
 		}
-		row, _ := strconv.Atoi(string(m[RowIndex]))
-		col, _ := strconv.Atoi(string(m[ColIndex]))
-		file := string(m[FileIndex])
-		if !filepath.IsAbs(file) {
+		file := string(m[1])
+		if !filepath.IsAbs(file) && dirname != "" {
 			file = filepath.Join(dirname, file)
+		}
+		row, _ := strconv.Atoi(string(m[2]))
+		col, _ := strconv.Atoi(string(m[3]))
+
+		msg := string(m[4])
+		if i < len(lines)-1 && len(lines[i+1]) != 0 && lines[i+1][0] == '\t' {
+			msg = msg + " " + string(bytes.TrimSpace(lines[i+1]))
+			i++
 		}
 		r.Errors = append(r.Errors, CompileError{
 			Row:     row,
 			Col:     col,
 			File:    file,
-			Message: string(m[MsgIndex]),
+			Message: msg,
 		})
 	}
 }
