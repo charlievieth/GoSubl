@@ -207,7 +207,7 @@ func (m *mPlay) Call() (interface{}, string) {
 	if !m.BuildOnly {
 		cmd, err := m.isCommand(m.Dir, m.Fn)
 		if err != nil {
-			return EmptyResponse, err.Error()
+			return EmptyResponse{}, err.Error()
 		}
 		if !cmd {
 			return m.runCmd("go", "test")
