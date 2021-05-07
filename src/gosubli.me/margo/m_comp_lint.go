@@ -88,6 +88,15 @@ func (c *CompLintRequest) BuildOutput() []string {
 	return nil
 }
 
+func (c *CompLintRequest) TestOutput() string {
+	dir := filepath.Join(os.TempDir(), "margo-comp-lint")
+	if os.MkdirAll(dir, 0744) != nil {
+		return os.DevNull
+	}
+	name := strings.Replace(filepath.ToSlash(c.Filename), "/", "%", -1) + ".test"
+	return filepath.Join(dir, name)
+}
+
 func (c *CompLintRequest) Compile(src []byte) *CompLintReport {
 	pkgname, _ := buildutil.ReadPackageName(c.Filename, src)
 
@@ -99,7 +108,7 @@ func (c *CompLintRequest) Compile(src []byte) *CompLintReport {
 	var args []string
 	switch {
 	case strings.HasSuffix(c.Filename, "_test.go"):
-		args = []string{"test", "-c", "-o", os.DevNull}
+		args = []string{"test", "-c", "-o", c.TestOutput()}
 	case pkgname == "main":
 		args = []string{"build"}
 		if extra := c.BuildOutput(); len(extra) != 0 {
