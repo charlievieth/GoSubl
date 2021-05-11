@@ -1,34 +1,62 @@
-from gosubl import gs
-from gosubl import mg9
 import os
 import sublime
 import sublime_plugin
 import threading
 
+# WARN: we get an import error trying to use out typing package
+# so just use the stdlib's package for now.
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import TypedDict
+
+from gosubl import gs
+from gosubl import mg9
+
 DOMAIN = "GsLint"
 CL_DOMAIN = "GsCompLint"
 
 sem = threading.Semaphore()
-file_refs = {}
 
 
-class FileRef(object):
-    def __init__(self, view):
-        self.view = view
-        self.src = ""
-        self.tm = 0.0
-        self.state = 0
-        self.reports = {}
+class GoCompLintError(TypedDict):
+    row: int
+    col: int
+    file: str
+    message: str
+
+
+class GoCompLintResponse(TypedDict):
+    filename: str
+    top_level_error: Optional[str]
+    cmd_error: Optional[str]
+    errors: Optional[List[GoCompLintError]]
 
 
 class Report(object):
-    def __init__(self, row, col, msg):
+    __slots__ = "row", "col", "msg"
+
+    def __init__(self, row: int, col: int, msg: str) -> None:
         self.row = row
         self.col = col
         self.msg = msg
 
 
-def highlight(fr):
+class FileRef(object):
+    __slots__ = "view", "src", "tm", "state", "reports"
+
+    def __init__(self, view: sublime.View) -> None:
+        self.view: sublime.View = view
+        self.src = ""
+        self.tm: float = 0.0
+        self.state: int = 0
+        self.reports: Dict[int, Report] = {}
+
+
+file_refs: Dict[str, FileRef] = {}
+
+
+def highlight(fr: FileRef) -> None:
     sel = gs.sel(fr.view).begin()
     row, _ = fr.view.rowcol(sel)
 
@@ -75,13 +103,13 @@ def highlight(fr):
     fr.view.set_status(DOMAIN, msg)
 
 
-def cleanup(view):
+def cleanup(view: sublime.View) -> None:
     view.set_status(DOMAIN, "")
     view.erase_regions(DOMAIN)
     view.erase_regions(DOMAIN + "-zero")
 
 
-def ref(fn, validate=True):
+def ref(fn: str, validate: bool = True) -> FileRef:
     with sem:
         if validate:
             for fn in list(file_refs.keys()):
@@ -91,7 +119,7 @@ def ref(fn, validate=True):
         return file_refs.get(fn)
 
 
-def do_comp_lint_callback(res, err):
+def do_comp_lint_callback(res: GoCompLintResponse, err: Optional[str]) -> None:
     if err:
         gs.notice(DOMAIN, err)
     if "filename" not in res:
@@ -126,7 +154,7 @@ def do_comp_lint_callback(res, err):
         except:
             gs.notice(DOMAIN, gs.traceback())
 
-    def cb():
+    def cb() -> None:
         fileref.reports = reports
         fileref.state = 1
         highlight(fileref)
@@ -135,7 +163,7 @@ def do_comp_lint_callback(res, err):
 
 
 class GsCompLintCommand(sublime_plugin.TextCommand):
-    def run(self, edit):
+    def run(self, edit: sublime.Edit) -> None:
         if gs.setting("comp_lint_enabled") is not True:
             return
 
