@@ -1,22 +1,20 @@
+import atexit
+import base64
+import json
+import os
+import threading
+import time
+import uuid
+from collections import OrderedDict
+
+import sublime
+
 from gosubl import about
 from gosubl import ev
 from gosubl import gs
 from gosubl import gsq
 from gosubl import sh
-
-import atexit
-import base64
-import hashlib
-import json
-import os
-import re
-import sublime
-import subprocess
-import threading
-import time
-import uuid
-
-from collections import OrderedDict
+from gosubl.typing import Callable
 
 DOMAIN = "MarGo"
 REQUEST_PREFIX = "%s.rqst." % DOMAIN
@@ -58,18 +56,23 @@ def gs_init(m={}):
     gsq.do("GoSublime", f, msg="Installing MarGo", set_status=False)
 
 
-class Request(object):
-    def __init__(self, f, method="", token=""):
-        self.f = f
-        self.tm = time.time()
+class Request:
+    __slots__ = "callback", "method", "token", "_start"
+
+    def __init__(self, callback: Callable, method: str = "", token: str = ""):
+        self.callback = callback
         self.method = method
-        if token:
-            self.token = token
-        else:
-            self.token = "mg9.autoken.%s" % uuid.uuid4()
+        self.token = token or "mg9.autoken.%s" % uuid.uuid4()
+        self._start = time.time()
 
     def header(self):
         return {"method": self.method, "token": self.token}
+
+    def reset_start_time(self) -> None:
+        self._start = time.time()
+
+    def duration(self) -> float:
+        return time.time() - self._start
 
 
 def _inst_state():
@@ -526,6 +529,8 @@ def imports(fn, src, toggle):
     )
 
 
+# WARN (CEV): show preview of the returned references
+#
 # TODO: include src one we start talking to gopls directly
 def references(filename, source, offset, callback):
     tid = gs.begin(DOMAIN, "Finding references")
@@ -587,12 +592,13 @@ def bcall(method, arg):
         return {}, "Blocking call(%s) aborted: Install is not done" % method
 
     q = gs.queue.Queue()
+
     acall(method, arg, lambda r, e: q.put((r, e)))
     try:
         res, err = q.get(True, gs.setting("ipc_timeout", 1))
         return res, err
-    except:
-        return {}, "Blocking Call(%s): Timeout" % method
+    except Exception as ex:
+        return {}, "Blocking Call(%s): Timeout: %s" % (method, ex)
 
 
 def expand_jdata(v):
@@ -626,16 +632,18 @@ def _recv():
             try:
                 ln = ln.strip()
                 if ln:
-                    r, _ = gs.json_decode(ln, {})
+                    # WARN
+                    # r, _ = gs.json_decode(ln, {})
+                    r, err = gs.json_decode(ln, {})
+                    if err:
+                        print("### RECV (ERROR): {}".format(err))  # WARN
+
                     token = r.get("token", "")
                     tag = r.get("tag", "")
                     k = REQUEST_PREFIX + token
 
-                    # TODO: try req = gs.del_attr(k)
-                    req = gs.attr(k, {})
-                    gs.del_attr(k)
-
-                    if req and req.f:
+                    req: Request = gs.del_attr(k)
+                    if req and req.callback:
                         if tag != TAG:
                             gs.notice(
                                 DOMAIN,
@@ -659,7 +667,7 @@ def _recv():
                                 "method": req.method,
                                 "tag": tag,
                                 "token": token,
-                                "dur": "%0.3fs" % (time.time() - req.tm),
+                                "dur": "%0.3fs" % req.duration(),
                                 "err": err,
                                 "size": "%0.1fK" % (len(ln) / 1024.0),
                             },
@@ -668,13 +676,14 @@ def _recv():
                         # CEV: req.f is the callback 'cb' set in _send().
                         #
                         dat = expand_jdata(r.get("data", {}))
+                        # print("### RECV: DATA: {}".format(dat))  # WARN
                         try:
                             # Add request back to the attr dict.
                             #
                             # TODO: Document, which calls keep the request.
-                            keep = req.f(dat, err) is True
+                            keep = req.callback(dat, err) is True
                             if keep:
-                                req.tm = time.time()
+                                req.reset_start_time()
                                 gs.set_attr(k, req)
                         except Exception:
                             gs.error_traceback(DOMAIN)
@@ -702,6 +711,7 @@ def _send():
 
                 # CEV: Looks like this starts/restarts the margo process.
                 if not proc or proc.poll() is not None:
+                    # print("###: PROC DIED")  # WARN
                     killSrv()
 
                     if _inst_state() != "busy":
@@ -725,7 +735,12 @@ def _send():
 
                     c = sh.Command(cmd)
                     c.stderr = gs.LOGFILE
-                    c.env = {"GOGC": 10, "XDG_CONFIG_HOME": gs.home_path()}
+
+                    # WARN WARN WARN WARN WARN WARN WARN WARN WARN WARN WARN
+                    # WARN WARN WARN WARN WARN WARN WARN WARN WARN WARN WARN
+                    # WARN (CEV): seeting GOGC
+                    # c.env = {"GOGC": 10, "XDG_CONFIG_HOME": gs.home_path()}
+                    c.env = {"XDG_CONFIG_HOME": gs.home_path()}
 
                     pr = c.proc()
                     if pr.ok:
@@ -746,38 +761,70 @@ def _send():
                     # Launch stdout feed.
                     gsq.launch(DOMAIN, lambda: _read_stdout(proc))
 
-                req = Request(f=cb, method=method)
+                    # WARN WARN WARN WARN
+                    # gsq.launch(DOMAIN, lambda: _read_stderr(proc))
+
+                req = Request(callback=cb, method=method)
                 gs.set_attr(REQUEST_PREFIX + req.token, req)
 
-                header, err = gs.json_encode(req.header())
+                # header, err = gs.json_encode(req.header())
+                # if err:
+                #     _cb_err(cb, "Failed to construct ipc header: %s" % err)
+                #     continue
+                #
+                # body, err = gs.json_encode(arg)
+                # if err:
+                #     _cb_err(cb, "Failed to construct ipc body: %s" % err)
+                #     continue
+                #
+                # ev.debug(DOMAIN, "margo request: %s " % header)
+                #
+                # try:
+                #     # TODO (CEV): make this one object and encode it to bytes here
+                #     proc.stdin.write(("%s %s\n" % (header, body)).encode('utf-8'))
+                # except Exception as ex:
+                #     _cb_err(cb, "Cannot talk to MarGo: %s" % ex)
+                #     killSrv()
+                #     gs.println(gs.traceback())
+
+                # WARN WARN WARN WARN WARN WARN WARN WARN WARN WARN WARN WARN
+                # WARN WARN WARN WARN WARN WARN WARN WARN WARN WARN WARN WARN
+                #
+                # Warning Use communicate() rather than .stdin.write, .stdout.read
+                # or .stderr.read to avoid deadlocks due to any of the other OS
+                # pipe buffers filling up and blocking the child process.
+                #
+                # WARN WARN WARN WARN WARN WARN WARN WARN WARN WARN WARN WARN
+                # WARN WARN WARN WARN WARN WARN WARN WARN WARN WARN WARN WARN
+
+                ev.debug(DOMAIN, "margo request: {}".format(req.header()))
+                data, err = gs.json_encode({
+                    "method": req.method,
+                    "token": req.token,
+                    "body": arg,
+                })
                 if err:
-                    _cb_err(cb, "Failed to construct ipc header: %s" % err)
+                    _cb_err(cb, "Failed to construct request body (%s): %s" %
+                            (req.method, err))
                     continue
-
-                body, err = gs.json_encode(arg)
-                if err:
-                    _cb_err(cb, "Failed to construct ipc body: %s" % err)
-                    continue
-
-                ev.debug(DOMAIN, "margo request: %s " % header)
-
-                ln = "%s %s\n" % (header, body)
 
                 try:
-                    if gs.PY3K:
-                        proc.stdin.write(bytes(ln, "UTF-8"))
-                    else:
-                        proc.stdin.write(ln)
-
-                except Exception as ex:
-                    _cb_err(cb, "Cannot talk to MarGo: %s" % err)
+                    # x = (data + "\n").encode("utf-8")
+                    # print("#### DEBUG: sending request: {}".format(data))
+                    # proc.stdin.write(x)
+                    proc.stdin.write((data + "\n").encode("utf-8"))
+                except Exception as e:
+                    print("## Exception 1: {}".format(e))
+                    _cb_err(cb, "Cannot talk to MarGo: %s" % e)
                     killSrv()
                     gs.println(gs.traceback())
 
-            except Exception:
+            except Exception as e:
+                print("## Exception 2: {}".format(e))
                 killSrv()
                 gs.println(gs.traceback())
-        except Exception:
+        except Exception as e:
+            print("## Exception 3: {}".format(e))
             gs.println(gs.traceback())
             break
 
@@ -803,8 +850,25 @@ def _read_stdout(proc):
             ln = proc.stdout.readline()
             if not ln:
                 break
-
             gs.mg9_recv_q.put(gs.ustr(ln))
+    except Exception:
+        gs.println(gs.traceback())
+
+        proc.stdout.close()
+        proc.wait()
+        proc = None
+
+
+# WARN: remove if not used
+def _read_stderr(proc):
+    """Reads lines from proc stderr printing them to the console
+    """
+    try:
+        while True:
+            ln = proc.stderr.readline()
+            if not ln:
+                break
+            gs.println(ln)
     except Exception:
         gs.println(gs.traceback())
 
@@ -829,7 +893,7 @@ def killSrv():
 
 
 def on(token, cb):
-    req = Request(f=cb, token=token)
+    req = Request(callback=cb, token=token)
     gs.set_attr(REQUEST_PREFIX + req.token, req)
 
 

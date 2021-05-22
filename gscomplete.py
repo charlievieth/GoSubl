@@ -68,6 +68,7 @@ def snippet_match(ctx, m):
 
 
 def expand_snippet_vars(vars, text, title, value):
+    # Callable[[Match[AnyStr]], AnyStr], string: AnyStr
     sub = lambda m: vars.get(m.group(1), "")
     return (
         SNIPPET_VAR_PAT.sub(sub, text),
@@ -149,7 +150,7 @@ class GoSublime(sublime_plugin.EventListener):
         if not REASONABLE_PKGNAME_PAT.match(default_pkgname):
             default_pkgname = ""
 
-        r = view.find("package\s+(\w+)", 0)
+        r = view.find(r"^package\s+(\w+)", 0)
         pkgname = view.substr(view.word(r.end())) if r else ""
 
         if not default_pkgname:
@@ -185,8 +186,8 @@ class GoSublime(sublime_plugin.EventListener):
             if scopes[-1] == "source.go":
                 cl.extend(resolve_snippets(ctx))
             elif scopes[-1] == "meta.block.go" and (
-                "meta.function.plain.go" in scopes
-                or "meta.function.receiver.go" in scopes
+                "meta.function.plain.go" in scopes or
+                "meta.function.receiver.go" in scopes
             ):
                 ctx["global"] = False
                 ctx["local"] = True

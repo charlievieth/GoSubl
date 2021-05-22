@@ -69,6 +69,7 @@ class _command(object):
             if not cmd_lst[0]:
                 raise Exception("Cannot find command `%s`" % orig_cmd)
 
+            # bufsize = 1024 * 1024 * 8  # WARN
             p = subprocess.Popen(
                 cmd_lst,
                 stdout=self.stdout,
@@ -79,7 +80,9 @@ class _command(object):
                 env=nv,
                 cwd=wd,
                 preexec_fn=setsid,
-                bufsize=0,
+                bufsize=0,  # WARN (CEV): get rid of bufsize
+                # bufsize=-1,  # WARN (CEV): get rid of bufsize
+                # bufsize=bufsize,  # WARN (CEV): get rid of bufsize
             )
         except Exception as e:
             exc = e
@@ -282,6 +285,7 @@ def getenv(name, default="", m={}):
     return env(m).get(name, default)
 
 
+# WARN (CEV): this may not be correct because of modules
 def gs_gopath(fn, roots=[]):
     comps = fn.split(os.sep)
     l = []
@@ -294,6 +298,7 @@ def gs_gopath(fn, roots=[]):
     return psep.join(l)
 
 
+# TODO (CEV): don't copy when we're just accessing one field
 def env(m={}):
     """
     Assemble environment information needed for correct operation. In particular,
@@ -468,4 +473,6 @@ def exe(nm):
 init_done = False
 GO_VERSION = about.DEFAULT_GO_VERSION
 VDIR_NAME = "%s_%s" % (about.VERSION, GO_VERSION)
+
+# WARN (CEV): WTF do we need this ???
 _env_ext = {}

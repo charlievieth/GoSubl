@@ -1,14 +1,8 @@
-from gosubl import gs
 import sublime
 
-if gs.PY3K:
-    from something_borrowed.diff_match_patch.python3.diff_match_patch import (
-        diff_match_patch,
-    )
-else:
-    from something_borrowed.diff_match_patch.python2.diff_match_patch import (
-        diff_match_patch,
-    )
+from something_borrowed.diff_match_patch.python3.diff_match_patch import (
+    diff_match_patch,
+)
 
 
 class MergeException(Exception):

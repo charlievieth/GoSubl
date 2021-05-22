@@ -17,7 +17,9 @@ import (
 var (
 	numbers = &counter{}
 	logger  = log.New(os.Stderr, "margo: ", log.Ldate|log.Ltime|log.Lshortfile)
-	sendCh  = make(chan Response, 100)
+
+	// TODO (CEV): use a pointer
+	sendCh = make(chan Response, 100)
 )
 
 type counter struct {
@@ -130,7 +132,8 @@ func main() {
 		}
 	}()
 
-	broker.Loop(!doCall, (wait || doCall))
+	// broker.Loop(!doCall, (wait || doCall))
+	broker.LoopBytes(!doCall, (wait || doCall))
 
 	byeFuncs.Lock()
 	wg := new(sync.WaitGroup)

@@ -225,6 +225,9 @@ func (r *ReferencesRequest) Call() (interface{}, string) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	dir := filepath.ToSlash(filepath.Dir(r.Filename))
+	root := projectRoot(contextFromEnv(r.Env), dir)
+
 	// TODO: use line/column (note: unicode is handled on the python side)
 
 	cmd := exec.CommandContext(ctx, "gopls", "-remote=auto", "references", "-d",
@@ -233,7 +236,7 @@ func (r *ReferencesRequest) Call() (interface{}, string) {
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-	cmd.Dir = filepath.Dir(r.Filename)
+	cmd.Dir = root
 
 	// this is dumb fix this
 	id := numbers.nextString()
@@ -266,8 +269,6 @@ func (r *ReferencesRequest) Call() (interface{}, string) {
 		other       []*SourceLocation
 	)
 
-	dir := filepath.ToSlash(filepath.Dir(r.Filename))
-	root := projectRoot(dir)
 	if root == "/" || root == filepath.VolumeName(dir) {
 		root = ""
 	}

@@ -789,14 +789,6 @@ def _env_settings(d, view, edit, args, wd, rkey):
     push_output(view, rkey, s)
 
 
-def cmd_settings(view, edit, args, wd, rkey):
-    _env_settings(gs.settings_dict(), view, edit, args, wd, rkey)
-
-
-def cmd_env(view, edit, args, wd, rkey):
-    _env_settings(sh.env(), view, edit, args, wd, rkey)
-
-
 def cmd_hist(view, edit, args, wd, rkey):
     aso = gs.aso()
     hkey = _hkey(wd)

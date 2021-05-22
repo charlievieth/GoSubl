@@ -33,8 +33,10 @@ class GsFmtCommand(sublime_plugin.TextCommand):
     def run(self, edit):
         vsize = self.view.size()
         src = self.view.substr(sublime.Region(0, vsize))
-        if not src.strip():
+        if src.isspace():
             return
+        # if not src.strip():
+        #     return
 
         res, err = mg9.fmt(self.view.file_name(), src)
         if err:
@@ -77,6 +79,7 @@ class GsFmtPromptSaveAsCommand(sublime_plugin.TextCommand):
 
 
 class GsGotoRowColCommand(sublime_plugin.TextCommand):
+    # WARN (CEV): use the Jumper logic
     def run(self, edit, row, col=0):
         pt = self.view.text_point(row, col)
         r = sublime.Region(pt, pt)
@@ -96,6 +99,7 @@ class GsGotoRowColCommand(sublime_plugin.TextCommand):
             sublime.set_timeout(hide, h)
 
 
+# TODO (CEV): this is worthless - remove it and the set_syntax stuff
 class GsNewGoFileCommand(sublime_plugin.WindowCommand):
     def run(self):
         pkg_name = "main"
@@ -116,6 +120,7 @@ class GsNewGoFileCommand(sublime_plugin.WindowCommand):
         )
 
 
+# TODO (CEV): this is worthless - remove it and the set_syntax stuff
 class GsCreateNewGoFileCommand(sublime_plugin.TextCommand):
     def run(self, edit, pkg_name, file_name):
         view = self.view

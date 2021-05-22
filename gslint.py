@@ -109,7 +109,7 @@ def cleanup(view: sublime.View) -> None:
     view.erase_regions(DOMAIN + "-zero")
 
 
-def ref(fn: str, validate: bool = True) -> FileRef:
+def ref(fn: str, validate: bool = True) -> Optional[FileRef]:
     with sem:
         if validate:
             for fn in list(file_refs.keys()):
@@ -132,9 +132,11 @@ def do_comp_lint_callback(res: GoCompLintResponse, err: Optional[str]) -> None:
         return
 
     reports = {}
-    if res.get("top_level_error", None):
-        gs.notice(DOMAIN, res["top_level_error"])
-        reports[0] = Report(row=0, col=0, msg=res["top_level_error"])
+    if "top_level_error" in res:
+        top_level_error = res["top_level_error"]
+        if top_level_error:
+            gs.notice(DOMAIN, top_level_error)
+            reports[0] = Report(row=0, col=0, msg=top_level_error)
 
     if "errors" in res:
         try:
@@ -155,9 +157,10 @@ def do_comp_lint_callback(res: GoCompLintResponse, err: Optional[str]) -> None:
             gs.notice(DOMAIN, gs.traceback())
 
     def cb() -> None:
-        fileref.reports = reports
-        fileref.state = 1
-        highlight(fileref)
+        if fileref is not None:  # make mypy happy
+            fileref.reports = reports
+            fileref.state = 1
+            highlight(fileref)
 
     sublime.set_timeout(cb, 0)
 

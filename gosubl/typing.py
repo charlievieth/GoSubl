@@ -2,11 +2,11 @@ try:
 
     # ST builds >= 4000
 
-    from mypy_extensions import TypedDict
     from typing import Any
     from typing import Callable
     from typing import Dict
     from typing import Generator
+    from typing import Generic
     from typing import IO
     from typing import Iterable
     from typing import Iterator
@@ -16,10 +16,13 @@ try:
     from typing import Set
     from typing import Tuple
     from typing import Type
+    from typing import TypeVar
+    from typing import TypedDict
     from typing import Union
-    from typing_extensions import Protocol
+    from typing import Protocol
 
-except ImportError:
+except ImportError as e:
+    print("### Failed to load std typing module: {}".format(e))
 
     # ST builds < 4000
 
@@ -43,6 +46,9 @@ except ImportError:
     class Type(metaclass=_TypeMeta):  # type: ignore
         pass
 
+    class TypeVar(metaclass=_TypeMeta):  # type: ignore
+        pass
+
     class TypedDict(Type, dict):  # type: ignore
         def __init__(*args, **kwargs) -> None:  # type: ignore
             pass
@@ -57,6 +63,9 @@ except ImportError:
         pass
 
     class Generator(Type):  # type: ignore
+        pass
+
+    class Generic(Type):  # type: ignore
         pass
 
     class IO(Type):  # type: ignore
