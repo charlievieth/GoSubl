@@ -8,6 +8,11 @@ import sublime_plugin
 
 DOMAIN = "GoSublime"
 
+# TODO: make this configurable
+FMT_IGNORED_EXTS = tuple([
+    ".pb.go"
+])
+
 
 class GsCommentForwardCommand(sublime_plugin.TextCommand):
     def run(self, edit):
@@ -27,7 +32,8 @@ class GsFmtCommand(sublime_plugin.TextCommand):
     def is_enabled(self):
         if gs.setting("fmt_enabled") is True:
             fn = self.view.file_name() or ""
-            return fn.endswith(".go") or gs.is_go_source_view(self.view)
+            if not self.is_ignored(fn):
+                return fn.endswith(".go") or gs.is_go_source_view(self.view)
         return False
 
     def run(self, edit):
@@ -38,7 +44,11 @@ class GsFmtCommand(sublime_plugin.TextCommand):
         # if not src.strip():
         #     return
 
-        res, err = mg9.fmt(self.view.file_name(), src)
+        file_name = self.view.file_name()
+        if self.is_ignored(file_name):
+            gs.println(DOMAIN, "fmt: ignoring file: %s" % (os.path.basename(file_name)))
+            return
+        res, err = mg9.fmt(file_name, src)
         if err:
             gs.println(DOMAIN, "cannot fmt file. error: `%s'" % err)
             return
@@ -55,6 +65,10 @@ class GsFmtCommand(sublime_plugin.TextCommand):
         if err:
             msg = "PANIC: Cannot fmt file. Check your source for errors (and maybe undo any changes)."
             sublime.error_message("%s: %s: Merge failure: `%s'" % (DOMAIN, msg, err))
+
+    @classmethod
+    def is_ignored(cls, filename: str) -> bool:
+        return filename is not None and filename.endswith(FMT_IGNORED_EXTS)
 
 
 class GsFmtSaveCommand(sublime_plugin.TextCommand):
