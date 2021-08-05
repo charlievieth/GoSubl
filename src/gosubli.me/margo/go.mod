@@ -7,10 +7,8 @@ require (
 	github.com/charlievieth/gocode v0.0.6
 	github.com/charlievieth/imports v0.0.3
 	github.com/charlievieth/pkgs v0.0.3
-	github.com/charlievieth/xtools v0.0.0-20210201183824-f7efff3cf2e5
+	github.com/charlievieth/xtools v0.0.0-20210611233823-68b6bf6a1b35
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
-	golang.org/x/mod v0.4.2 // indirect
-	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9
-	golang.org/x/sys v0.0.0-20210324051608-47abb6519492 // indirect
-	golang.org/x/tools v0.1.1-0.20210322191307-d8aeb16bb5b3
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
+	golang.org/x/tools v0.1.5
 )
