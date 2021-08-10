@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"unicode"
 
 	"github.com/charlievieth/buildutil"
@@ -96,13 +97,33 @@ func (c *CompLintRequest) BuildOutput() []string {
 	return nil
 }
 
+var windowsReplacer struct {
+	*strings.Replacer
+	once sync.Once
+}
+
+func initWindowsReplacer() {
+	const invalid = `*."/\[]:;|,`
+	a := make([]string, 0, len(invalid)*2)
+	for i := range invalid {
+		a = append(a, invalid[i:i+1], "%")
+	}
+	windowsReplacer.Replacer = strings.NewReplacer(a...)
+}
+
 func (c *CompLintRequest) TestOutput() string {
 	dir := filepath.Join(os.TempDir(), "margo-comp-lint")
 	if os.MkdirAll(dir, 0744) != nil {
 		return os.DevNull
 	}
-	name := strings.Replace(filepath.ToSlash(c.Filename), "/", "%", -1) + ".test"
-	return filepath.Join(dir, name)
+	s := c.Filename
+	if runtime.GOOS != "windows" {
+		s = strings.Replace(filepath.ToSlash(s), "/", "%", -1)
+	} else {
+		windowsReplacer.once.Do(initWindowsReplacer)
+		s = windowsReplacer.Replace(s)
+	}
+	return filepath.Join(dir, s+".test")
 }
 
 func (c *CompLintRequest) Compile(src []byte) *CompLintReport {
@@ -116,7 +137,7 @@ func (c *CompLintRequest) Compile(src []byte) *CompLintReport {
 	var args []string
 	switch {
 	case strings.HasSuffix(c.Filename, "_test.go"):
-		args = []string{"test", "-c", "-o", c.TestOutput()}
+		args = []string{"test", "-i", "-c", "-o", c.TestOutput()}
 	case pkgname == "main":
 		args = []string{"build"}
 		if extra := c.BuildOutput(); len(extra) != 0 {
