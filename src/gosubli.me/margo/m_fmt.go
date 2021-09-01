@@ -7,6 +7,7 @@ import (
 	"go/parser"
 	"go/printer"
 	"go/token"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -153,7 +154,7 @@ func (f *FormatRequest) doCall() (res *FormatResponse, err error) {
 		}
 	}()
 
-	// TODO: use a global Options var
+	// TODO: allow configuring env var overrides
 	opts := imports.Options{
 		TabWidth:    8,
 		TabIndent:   true,
@@ -162,6 +163,7 @@ func (f *FormatRequest) doCall() (res *FormatResponse, err error) {
 		SimplifyAST: true,
 		Env: &imports.ProcessEnv{
 			GocmdRunner: &gocommand.Runner{},
+			WorkingDir:  filepath.Dir(f.Filename),
 		},
 	}
 	src := []byte(f.Src)
