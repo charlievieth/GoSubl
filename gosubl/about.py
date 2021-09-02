@@ -3,8 +3,8 @@ import sublime
 
 # GoSublime Globals
 
-ANN = "a19.04.15-27"
-VERSION = "r18.04.15-27"
+ANN = "a19.04.15-28"
+VERSION = "r18.04.15-28"
 VERSION_PAT = re.compile(r"\d{2}[.]\d{2}[.]\d{2}-\d+", re.IGNORECASE)
 DEFAULT_GO_VERSION = "go?"
 GO_VERSION_OUTPUT_PAT = re.compile(
@@ -19,4 +19,4 @@ MARGO_EXE_PAT = re.compile(r"^gosublime\.margo.*\.exe$", re.IGNORECASE)
 
 # CEV: Dev Globals
 
-FORCE_INSTALL = True
+FORCE_INSTALL = False
