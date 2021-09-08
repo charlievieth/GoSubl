@@ -6,8 +6,8 @@ github.com/charlievieth/fs v0.0.1 h1:sJqnp1RWguMAojHpyCbZ2KyXNp2ihxGIFPUNb8XDGu8
 github.com/charlievieth/fs v0.0.1/go.mod h1:74vroF06jvR8XMafvi2CYzs8WruHL1axh/qFx7XN5Xw=
 github.com/charlievieth/gocode v0.0.6 h1:nQJNWUmvfVfkVqHQJZ9yU1+tj0+USBdE9H8/yKpaMZ0=
 github.com/charlievieth/gocode v0.0.6/go.mod h1:UalAu3LIYt8M1CGm6yXqWwBY1Bx/ixOHHVQdInwTDrE=
-github.com/charlievieth/imports v0.0.4-0.20210903040017-c21adac2de59 h1:YC0KiR7lW5e3SpqtA529RGWdjn69+y71dbeQGHGNOQM=
-github.com/charlievieth/imports v0.0.4-0.20210903040017-c21adac2de59/go.mod h1:tzIxD0fMsXg5PSZsByuj4J7zW5+raQ3klZNrRtt/jFE=
+github.com/charlievieth/imports v0.0.4 h1:mUGp+frM/TGv5UM6U6j4Go5nyuQ3JS58UoLSKtFJyBE=
+github.com/charlievieth/imports v0.0.4/go.mod h1:tzIxD0fMsXg5PSZsByuj4J7zW5+raQ3klZNrRtt/jFE=
 github.com/charlievieth/pkgs v0.0.3 h1:SYwHO5R0oGPZPvfbTj65XWnVB9/i4OU58pLzO7XTTsI=
 github.com/charlievieth/pkgs v0.0.3/go.mod h1:yvQDn66EZ2jMSivisfAuE3XgKanVHK8nEGUrpPdEdGU=
 github.com/charlievieth/xtools v0.0.0-20210611233823-68b6bf6a1b35 h1:a+C+BXeSF5QtPNVKCb9f804jPf7e1ia3sXFIZiG9/HU=
