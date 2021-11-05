@@ -14,7 +14,9 @@ from gosubl import ev
 from gosubl import gs
 from gosubl import gsq
 from gosubl import sh
+from gosubl.typing import Any
 from gosubl.typing import Callable
+from gosubl.typing import Dict
 
 DOMAIN = "MarGo"
 REQUEST_PREFIX = "%s.rqst." % DOMAIN
@@ -527,6 +529,22 @@ def imports(fn, src, toggle):
             "tabWidth": gs.setting("fmt_tab_width"),
         },
     )
+
+
+def rename(filename: str, rename_to: str, offset: int, callback: Any) -> Dict[str, str]:
+    tid = gs.begin(DOMAIN, "Renaming symbol")
+
+    def cb(res, err):
+        gs.end(tid)
+        callback(res, err)
+
+    request = {
+        "filename": filename,
+        "to": rename_to,
+        "offset": offset,
+        "env": sh.env(),
+    }
+    acall("rename", request, cb)
 
 
 # WARN (CEV): show preview of the returned references

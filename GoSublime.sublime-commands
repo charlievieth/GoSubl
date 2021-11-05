@@ -4,6 +4,10 @@
 		"command": "gs_palette",
 		"args": {"palette": "imports", "direct": true}
 	},
+	    {
+        "caption": "GoSublime: Rename",
+        "command": "gs_rename"
+    },
 	{
 		"caption": "GoSublime: List File declarations",
 		"command": "gs_palette",
