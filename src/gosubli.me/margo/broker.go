@@ -426,8 +426,10 @@ func (b *Broker) LoopBytes(decorate bool, wait bool) {
 	if err != nil {
 		logger.Fatalf("error: failed to find parent process (%d): %s", ppid, err)
 	}
-	if err := proc.Signal(syscall.Signal(0)); err != nil {
-		logger.Fatalf("error: signalling parent process (%d): %s", ppid, err)
+	if runtime.GOOS != "windows" {
+		if err := proc.Signal(syscall.Signal(0)); err != nil {
+			logger.Fatalf("error: signalling parent process (%d): %s", ppid, err)
+		}
 	}
 
 	for {
