@@ -3,8 +3,8 @@ import sublime
 
 # GoSublime Globals
 
-ANN = "a19.04.15-31"
-VERSION = "r18.04.15-31"
+ANN = "a19.04.15-32"
+VERSION = "r18.04.15-32"
 VERSION_PAT = re.compile(r"\d{2}[.]\d{2}[.]\d{2}-\d+", re.IGNORECASE)
 DEFAULT_GO_VERSION = "go?"
 GO_VERSION_OUTPUT_PAT = re.compile(
