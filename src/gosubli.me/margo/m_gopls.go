@@ -230,7 +230,10 @@ func (r *ReferencesRequest) Call() (interface{}, string) {
 
 	// TODO: use line/column (note: unicode is handled on the python side)
 
-	cmd := exec.CommandContext(ctx, "gopls", "-remote=auto", "references", "-d",
+	// TODO: add back "-remote=auto" when it's working again. Currently,
+	// it fails if a gopls instance is not currently serving. Previousy,
+	// it would spawn a new server.
+	cmd := exec.CommandContext(ctx, "gopls", "references", "-d",
 		fmt.Sprintf("%s:#%d", r.Filename, r.Offset))
 
 	var stdout, stderr bytes.Buffer
