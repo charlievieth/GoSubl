@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"go/ast"
 	"go/parser"
 	"go/printer"
 	"go/token"
 	"path/filepath"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/charlievieth/imports"
@@ -18,12 +18,14 @@ import (
 	"golang.org/x/sync/singleflight"
 )
 
+// TODO: add configurable Timeout for goimports
 type FormatRequest struct {
 	Filename   string `json:"Fn"`
 	Src        string `json:"Src"`
 	Tabwidth   int    `json:"TabWidth"`
 	TabIndent  bool   `json:"TabIndent"`
 	FormatOnly bool   `json:"FormatOnly"` // Disable the insertion and deletion of imports
+	FixCGO     bool   `json:"FixCGO"`     // Enable goimports for cgo files (slow)
 }
 
 type FormatResponse struct {
@@ -31,92 +33,164 @@ type FormatResponse struct {
 	NoChange bool   `json:"no_change"`
 }
 
-func (f *FormatRequest) formatOnly() (*FormatResponse, error) {
-	src := []byte(f.Src)
-	fset := token.NewFileSet()
-	af, err := parser.ParseFile(fset, f.Filename, src, parser.ParseComments)
-	if err != nil && af == nil {
-		return nil, err
-	}
+func (f *FormatRequest) formatFile(fset *token.FileSet, af *ast.File) ([]byte, error) {
+	// Keep these in sync with cmd/gofmt/gofmt.go.
+	const (
+		// printerNormalizeNumbers means to canonicalize number literal prefixes
+		// and exponents while printing. See https://golang.org/doc/go1.13#gofmt.
+		//
+		// This value is defined in go/printer specifically for go/format and cmd/gofmt.
+		printerNormalizeNumbers = 1 << 30
+
+		tabWidth    = 8
+		printerMode = printer.UseSpaces | printer.TabIndent | printerNormalizeNumbers
+	)
+	config := printer.Config{Mode: printerMode, Tabwidth: tabWidth}
+
 	imports.Simplify(af)
-
-	cfg := printer.Config{
-		Mode:     printer.UseSpaces | printer.TabIndent,
-		Tabwidth: f.Tabwidth,
+	if f.hasUnsortedImports(af) {
+		ast.SortImports(fset, af)
 	}
-	var buf bytes.Buffer
-	buf.Grow(len(src) + 512) // 512 is totally arbitrary, but seems about right
 
-	err = cfg.Fprint(&buf, fset, af)
-	if err != nil {
+	var buf bytes.Buffer
+	buf.Grow(len(f.Src) + 512) // 512 is totally arbitrary, but seems about right
+	if err := config.Fprint(&buf, fset, af); err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return buf.Bytes(), nil
 }
 
-func (f *FormatRequest) callTimeout() (*FormatResponse, string) {
+func (*FormatRequest) hasUnsortedImports(file *ast.File) bool {
+	for _, d := range file.Decls {
+		d, ok := d.(*ast.GenDecl)
+		if !ok || d.Tok != token.IMPORT {
+			// Not an import declaration, so we're done.
+			// Imports are always first.
+			return false
+		}
+		if d.Lparen.IsValid() {
+			// For now assume all grouped imports are unsorted.
+			// TODO(gri) Should check if they are sorted already.
+			return true
+		}
+		// Ungrouped imports are sorted by default.
+	}
+	return false
+}
+
+func (f *FormatRequest) callTimeout() (*FormatResponse, error) {
 	type Response struct {
 		Out []byte
 		Err error
 	}
-	opts := imports.Options{
-		TabWidth:    f.Tabwidth,
-		TabIndent:   f.TabIndent,
-		Comments:    true,
-		Fragment:    true,
-		SimplifyAST: true,
-		Env: &imports.ProcessEnv{
-			GocmdRunner: &gocommand.Runner{},
-		},
-	}
-	start := time.Now()
+
 	src := []byte(f.Src)
-	ch := make(chan Response, 2)
-	go func() {
-		out, err := imports.Process(f.Filename, src, &opts)
-		ch <- Response{out, err}
-	}()
 
-	var done int64
-	timer := time.NewTimer(time.Millisecond * 500)
-	defer func() {
-		atomic.StoreInt64(&done, 1)
-		timer.Stop()
-	}()
-
-	for i := 0; i < 2; i++ {
-		select {
-		case res := <-ch:
-			if res.Out == nil && res.Err != nil {
-				return &FormatResponse{NoChange: true}, res.Err.Error()
+	// TODO: stop if there is an error here? We also might want
+	// to use format.Source since it handles code fragments.
+	hasCGO := false
+	fset := token.NewFileSet()
+	af, parseErr := parser.ParseFile(fset, f.Filename, src, parser.ParseComments)
+	if parseErr == nil {
+		for _, imp := range af.Imports {
+			if imp.Path != nil && imp.Path.Value == `"C"` {
+				hasCGO = true
+				break
 			}
-			if bytes.Equal(src, res.Out) {
-				return &FormatResponse{NoChange: true}, ""
-			}
-			return &FormatResponse{Src: string(res.Out)}, ""
-		case <-timer.C:
-			go func() {
-				fset := token.NewFileSet()
-				af, err := parser.ParseFile(fset, f.Filename, src, parser.ParseComments)
-				if err != nil && af == nil {
-					ch <- Response{Err: err}
-					return
-				}
-				if atomic.LoadInt64(&done) != 0 {
-					return // bail
-				}
-				cfg := printer.Config{
-					Mode:     printer.UseSpaces | printer.TabIndent,
-					Tabwidth: f.Tabwidth,
-				}
-				var buf bytes.Buffer
-				cfg.Fprint(&buf, fset, af)
-				ch <- Response{buf.Bytes(), err}
-			}()
 		}
 	}
-	return &FormatResponse{NoChange: true}, "Timeout formatting file: " +
-		time.Since(start).String()
+
+	call := func(ch chan<- *Response, fn func() ([]byte, error)) {
+		go func() {
+			var out []byte
+			var err error
+			if e := recover(); e != nil {
+				err = f.recoverErr(e)
+				out = src
+				select {
+				case ch <- &Response{out, err}:
+				default:
+				}
+			}
+			out, err = fn()
+			ch <- &Response{out, err}
+		}()
+	}
+
+	fixImportsCh := make(chan *Response, 1)
+	formatOnlyCh := make(chan *Response, 1)
+
+	call(fixImportsCh, func() ([]byte, error) {
+		// goimports is very slow when "C" is imported
+		if !hasCGO || f.FixCGO {
+			// TODO: allow configuring env var overrides
+			opts := imports.Options{
+				TabWidth:    8,
+				TabIndent:   true,
+				Comments:    true,
+				Fragment:    true,
+				SimplifyAST: true,
+				Env: &imports.ProcessEnv{
+					GocmdRunner: &gocommand.Runner{},
+					WorkingDir:  filepath.Dir(f.Filename),
+					// TODO: set the Env field
+				},
+			}
+			return imports.Process(f.Filename, src, &opts)
+		}
+		return nil, errors.New("fmt: cgo not supported")
+	})
+	call(formatOnlyCh, func() ([]byte, error) {
+		if af != nil {
+			return f.formatFile(fset, af)
+		}
+		return nil, parseErr
+	})
+
+	start := time.Now()
+	timeout := time.NewTimer(time.Millisecond * 500)
+	defer timeout.Stop()
+
+	timedOut := false
+	var fixImportsRes *Response
+	var formatOnlyRes *Response
+Loop:
+	for {
+		select {
+		case fixImportsRes = <-fixImportsCh:
+			if fixImportsRes.Err == nil || formatOnlyRes != nil {
+				break Loop
+			}
+		case formatOnlyRes = <-formatOnlyCh:
+			if formatOnlyRes.Err != nil || fixImportsRes != nil {
+				break Loop
+			}
+		case <-timeout.C:
+			if timedOut || formatOnlyRes != nil || fixImportsRes != nil {
+				break Loop
+			}
+			timedOut = true
+			// Wait a little longer for a response
+			timeout.Reset(time.Millisecond * 200)
+		}
+	}
+	res := fixImportsRes
+	if res == nil || (res.Err != nil && formatOnlyRes != nil && formatOnlyRes.Err == nil) {
+		res = formatOnlyRes
+	}
+	if res != nil {
+		if res.Err != nil {
+			return &FormatResponse{NoChange: true}, res.Err
+		}
+		if bytes.Equal(src, res.Out) {
+			return &FormatResponse{NoChange: true}, nil
+		}
+		return &FormatResponse{Src: string(res.Out)}, nil
+	}
+	if timedOut {
+		return &FormatResponse{}, fmt.Errorf("fmt: timed out after: %s", time.Since(start))
+	}
+	return &FormatResponse{}, errors.New("failed to format file: nil response")
 }
 
 func (*FormatRequest) recoverErr(err interface{}) error {
@@ -133,51 +207,6 @@ func (*FormatRequest) recoverErr(err interface{}) error {
 	default:
 		return fmt.Errorf("%#v", err)
 	}
-}
-
-// var importsOptions = &imports.Options{
-// 	TabWidth:    8,
-// 	TabIndent:   true,
-// 	Comments:    true,
-// 	Fragment:    true,
-// 	SimplifyAST: true,
-// 	Env: &imports.ProcessEnv{
-// 		GocmdRunner: &gocommand.Runner{},
-// 	},
-// }
-
-func (f *FormatRequest) doCall() (res *FormatResponse, err error) {
-	defer func() {
-		if e := recover(); e != nil {
-			err = f.recoverErr(e)
-			res = &FormatResponse{NoChange: true}
-		}
-	}()
-
-	// TODO: allow configuring env var overrides
-	opts := imports.Options{
-		TabWidth:    8,
-		TabIndent:   true,
-		Comments:    true,
-		Fragment:    true,
-		SimplifyAST: true,
-		Env: &imports.ProcessEnv{
-			GocmdRunner: &gocommand.Runner{},
-			WorkingDir:  filepath.Dir(f.Filename),
-		},
-	}
-	src := []byte(f.Src)
-
-	var out []byte
-	out, err = imports.Process(f.Filename, src, &opts)
-	if out == nil && err != nil {
-		return &FormatResponse{NoChange: true}, err
-	}
-
-	if bytes.Equal(src, out) {
-		return &FormatResponse{NoChange: true}, nil
-	}
-	return &FormatResponse{Src: string(out)}, nil
 }
 
 var (
@@ -219,7 +248,7 @@ func (f *FormatRequest) Call() (interface{}, string) {
 	}
 
 	v, err, _ := formatRequestGroup.Do(f.Src, func() (v interface{}, err error) {
-		return f.cachePut(f.doCall())
+		return f.cachePut(f.callTimeout())
 	})
 	res, ok := v.(*FormatResponse)
 	if !ok && err == nil {
