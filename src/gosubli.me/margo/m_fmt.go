@@ -141,7 +141,8 @@ func (f *FormatRequest) callTimeout() (*FormatResponse, error) {
 		return nil, errors.New("fmt: cgo not supported")
 	})
 	call(formatOnlyCh, func() ([]byte, error) {
-		if af != nil {
+		// TODO: handle code fragments
+		if af != nil && parseErr == nil {
 			return f.formatFile(fset, af)
 		}
 		return nil, parseErr
