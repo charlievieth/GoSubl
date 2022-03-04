@@ -29,8 +29,9 @@ type FormatRequest struct {
 }
 
 type FormatResponse struct {
-	Src      string `json:"src"`
-	NoChange bool   `json:"no_change"`
+	Src       string `json:"src"`
+	NoChange  bool   `json:"no_change"`
+	dontCache bool
 }
 
 func (f *FormatRequest) formatFile(fset *token.FileSet, af *ast.File) ([]byte, error) {
@@ -175,9 +176,19 @@ Loop:
 			timeout.Reset(time.Millisecond * 200)
 		}
 	}
+	var dontCache bool
 	res := fixImportsRes
-	if res == nil || (res.Err != nil && formatOnlyRes != nil && formatOnlyRes.Err == nil) {
-		res = formatOnlyRes
+	// if res == nil || (res.Err != nil && formatOnlyRes != nil && formatOnlyRes.Err == nil) {
+	if res == nil {
+		if f.FormatOnly {
+			// Imports failed to complete in time or there was an error,
+			// so don't cache the result since imports will likly run
+			// faster on a subsequent call.
+			dontCache = true
+		}
+		if res.Err != nil && formatOnlyRes != nil && formatOnlyRes.Err == nil {
+			res = formatOnlyRes
+		}
 	}
 	if res != nil {
 		if res.Err != nil {
@@ -186,7 +197,7 @@ Loop:
 		if bytes.Equal(src, res.Out) {
 			return &FormatResponse{NoChange: true}, nil
 		}
-		return &FormatResponse{Src: string(res.Out)}, nil
+		return &FormatResponse{Src: string(res.Out), dontCache: dontCache}, nil
 	}
 	if timedOut {
 		return &FormatResponse{}, fmt.Errorf("fmt: timed out after: %s", time.Since(start))
@@ -233,6 +244,9 @@ func (f *FormatRequest) cacheGet() (*FormatResponse, string, bool) {
 }
 
 func (f *FormatRequest) cachePut(res *FormatResponse, err error) (*FormatResponse, error) {
+	if res.dontCache {
+		return res, err
+	}
 	ent := &FormatCacheEntry{
 		Res:    res,
 		ErrStr: errStr(err),
