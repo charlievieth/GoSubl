@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -110,9 +111,17 @@ func (f *FindRequest) Gopls(ctx context.Context, buildCtxt *build.Context) (*Fin
 	)
 	cmd.Dir = filepath.Dir(f.Fn)
 
-	output, err := cmd.CombinedOutput()
+	output, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", bytes.TrimSpace(output), err)
+		var ee *exec.ExitError
+		if errors.As(err, &ee) {
+			msg := string(bytes.TrimSpace(ee.Stderr))
+			if !strings.HasPrefix(msg, "gopls: ") {
+				msg = "gopls: " + msg
+			}
+			return nil, errors.New(msg)
+		}
+		return nil, fmt.Errorf("gopls: %w", err)
 	}
 
 	var def GoplsDefinitionResponse
@@ -307,10 +316,14 @@ func (f *FindRequest) Call() (interface{}, string) {
 		}
 	}()
 
-	var first error
+	var errs []error
 	for i := 0; i < 2; i++ {
 		res := <-ch
-		if res.Err == nil && res.Res != nil {
+		if res.Err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		if res.Res != nil {
 			fn := res.Res.Fn
 			if replaceRoot && fake != "" {
 				old := ctxt.GOROOT + string(filepath.Separator) + "src"
@@ -319,14 +332,16 @@ func (f *FindRequest) Call() (interface{}, string) {
 			res.Res.Program = res.Program
 			return []FindResponse{*res.Res}, ""
 		}
-		if res.Err != nil {
-			first = res.Err
+	}
+	if len(errs) > 0 {
+		a := make([]string, len(errs))
+		for i, e := range errs {
+			a[i] = e.Error()
 		}
+		sort.Strings(a)
+		return []FindResponse{}, strings.Join(a, "; ")
 	}
 
 	// This should not happen
-	if first == nil {
-		first = errors.New("doc: internal error: no match and no error")
-	}
-	return []FindResponse{}, first.Error()
+	return []FindResponse{}, "doc: internal error: no match and no error"
 }
