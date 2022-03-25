@@ -50,7 +50,7 @@ contexts:
 
   basic-types:
     # includes struct and interface
-    - match: '\b(int(16|8|32|64)?|uint(16|8|32|ptr|64)?|float(32|64)?|b(yte|ool)|error|str(ing|uct)|interface|rune|complex(64|128))\b'
+    - match: '\b(any|int(16|8|32|64)?|uint(16|8|32|ptr|64)?|float(32|64)?|b(yte|ool)|error|str(ing|uct)|interface|rune|complex(64|128))\b'
       scope: storage.type.go
 
   case-default:
