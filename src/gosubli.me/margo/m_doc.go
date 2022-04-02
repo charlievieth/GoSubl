@@ -320,7 +320,7 @@ func (f *FindRequest) Call() (interface{}, string) {
 	for i := 0; i < 2; i++ {
 		res := <-ch
 		if res.Err != nil {
-			errs = append(errs, err)
+			errs = append(errs, res.Err)
 			continue
 		}
 		if res.Res != nil {
