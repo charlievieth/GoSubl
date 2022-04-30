@@ -8,14 +8,16 @@ import (
 	"go/parser"
 	"go/printer"
 	"go/token"
+	"hash/maphash"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/charlievieth/imports"
 	"github.com/charlievieth/imports/gocommand"
-	"github.com/golang/groupcache/lru"
 	"golang.org/x/sync/singleflight"
+	"gosubli.me/margo/lru"
 )
 
 // TODO: add configurable Timeout for goimports
@@ -221,22 +223,64 @@ func (*FormatRequest) recoverErr(err interface{}) error {
 }
 
 var (
-	formatRequestGroup   singleflight.Group
-	formatRequestCache   = lru.New(128)
-	formatRequestCacheMu sync.Mutex
+	formatRequestGroup     singleflight.Group
+	formatRequestCache     = lru.New(128)
+	formatRequestCacheSeed = maphash.MakeSeed()
+	formatRequestCacheInit sync.Once
 )
+
+func cleanupFormatRequestCache() {
+	const maxAge = time.Minute * 2
+	tick := time.NewTicker(time.Minute)
+	defer tick.Stop()
+	for range tick.C {
+		formatRequestCache.RemoveFunc(func(_ lru.Key, value interface{}) bool {
+			if e, ok := value.(*FormatCacheEntry); ok {
+				if mod := e.ModTime(); !mod.IsZero() && time.Since(mod) >= maxAge {
+					return true
+				}
+			}
+			return false
+		})
+	}
+}
 
 type FormatCacheEntry struct {
 	Res    *FormatResponse
+	tval   atomic.Value // *time.Time
 	ErrStr string
 }
 
+func (e *FormatCacheEntry) UpdateModTime() {
+	now := time.Now()
+	e.tval.Store(&now)
+}
+
+func (e *FormatCacheEntry) ModTime() time.Time {
+	if e != nil {
+		if v := e.tval.Load(); v != nil {
+			return *v.(*time.Time)
+		}
+	}
+	return time.Time{}
+}
+
+func (f *FormatRequest) cacheKey() string {
+	if len(f.Src) <= 512*1024 {
+		return f.Src
+	}
+	// Use a hash for larger files so that we don't
+	// store the full source in memory
+	var h maphash.Hash
+	h.SetSeed(formatRequestCacheSeed)
+	h.WriteString(f.Src)
+	return fmt.Sprintf("%s|%d|%d", filepath.Base(f.Filename), len(f.Src), h.Sum64())
+}
+
 func (f *FormatRequest) cacheGet() (*FormatResponse, string, bool) {
-	formatRequestCacheMu.Lock()
-	v, ok := formatRequestCache.Get(f.Src)
-	formatRequestCacheMu.Unlock()
-	if ok {
+	if v, ok := formatRequestCache.Get(f.cacheKey()); ok {
 		ent := v.(*FormatCacheEntry)
+		ent.UpdateModTime()
 		return ent.Res, ent.ErrStr, true
 	}
 	return nil, "", false
@@ -246,13 +290,13 @@ func (f *FormatRequest) cachePut(res *FormatResponse, err error) (*FormatRespons
 	if res.dontCache {
 		return res, err
 	}
-	ent := &FormatCacheEntry{
+	formatRequestCacheInit.Do(func() { go cleanupFormatRequestCache() })
+	e := &FormatCacheEntry{
 		Res:    res,
 		ErrStr: errStr(err),
 	}
-	formatRequestCacheMu.Lock()
-	formatRequestCache.Add(f.Src, ent)
-	formatRequestCacheMu.Unlock()
+	e.UpdateModTime()
+	formatRequestCache.Add(f.cacheKey(), e)
 	return res, err
 }
 

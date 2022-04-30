@@ -16,7 +16,7 @@ import (
 	"sync"
 
 	"github.com/charlievieth/gocode"
-	"github.com/golang/groupcache/lru"
+	"gosubli.me/margo/lru"
 )
 
 type GoCode struct {
@@ -290,7 +290,6 @@ type AstEntry struct {
 
 type AstCache struct {
 	cache *lru.Cache
-	mu    sync.Mutex
 }
 
 func NewAstCache(maxEntries int) *AstCache {
@@ -300,25 +299,18 @@ func NewAstCache(maxEntries int) *AstCache {
 }
 
 func (c *AstCache) Add(filename string, ent *AstEntry) {
-	c.mu.Lock()
 	c.cache.Add(filename, ent)
-	c.mu.Unlock()
 }
 
 func (c *AstCache) Get(filename string) (*AstEntry, bool) {
-	c.mu.Lock()
-	v, ok := c.cache.Get(filename)
-	c.mu.Unlock()
-	if ok {
+	if v, ok := c.cache.Get(filename); ok {
 		return v.(*AstEntry), true
 	}
 	return nil, false
 }
 
 func (c *AstCache) Remove(filename string) {
-	c.mu.Lock()
 	c.cache.Remove(filename)
-	c.mu.Unlock()
 }
 
 func (c *AstCache) ParseFile(filename string, src interface{}) (*token.FileSet, *ast.File, error) {

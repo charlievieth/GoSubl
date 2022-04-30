@@ -7,6 +7,8 @@ import (
 	"flag"
 	"io"
 	"log"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"strconv"
 	"strings"
@@ -65,7 +67,12 @@ func main() {
 	flags.StringVar(&do, "do", "-", "Process the specified operations(lines) and exit. `-` means operate as normal (`-do` implies `-wait=true`)")
 	flags.StringVar(&tag, "tag", tag, "Requests will include a member `tag' with this value")
 	flags.IntVar(&maxMem, "oom", maxMemDefault, "The maximum amount of memory MarGo is allowed to use. If memory use reaches this value, MarGo dies :'(")
+	pprofAddr := flags.String("pprof-addr", "", "HTTP address for pprof")
 	flags.Parse(os.Args[1:])
+
+	if *pprofAddr != "" {
+		go func() { logger.Println(http.ListenAndServe(*pprofAddr, nil)) }()
+	}
 
 	if maxMem <= 0 {
 		maxMem = maxMemDefault
