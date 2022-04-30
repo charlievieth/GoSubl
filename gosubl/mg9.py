@@ -215,6 +215,13 @@ def install(aso_install_vesion, force_install):
         gopath = gs.dist_path() + os.pathsep + sh.getenv("GOPATH")
         margo_binary = os.path.join(gs.home_dir_path("bin"), INSTALL_EXE)
 
+        if os.path.exists(os.path.join(
+            gs.dist_path(), 'src', 'gosubli.me', 'margo', 'vendor',
+        )):
+            cmd = sh.Command(["go", "mod", "vendor"])
+            cmd.wd = os.path.join(gs.dist_path(), 'src', 'gosubli.me', 'margo')
+            cmd.run()
+
         cmd = sh.Command(
             ["go", "build", "-v", "-x", "-o", margo_binary, "gosubli.me/margo"],
         )
