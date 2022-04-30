@@ -147,7 +147,7 @@ func (c *CompLintRequest) TestOutput() string {
 	// The max file name is 255 on Darwin and 259 on Windows so use 254 to be safe.
 	if len(s) >= 254-len(".test") {
 		h := md5.Sum([]byte(s))
-		s = hex.EncodeToString(h[:])
+		s = hex.EncodeToString(h[:]) + "." + filepath.Base(c.Filename)
 	}
 	return filepath.Join(dir, s+".test")
 }
