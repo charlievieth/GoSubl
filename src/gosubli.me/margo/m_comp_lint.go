@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"go/build"
 	"io/ioutil"
@@ -12,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 	"unicode"
 
 	"github.com/charlievieth/buildutil"
@@ -97,33 +100,88 @@ func (c *CompLintRequest) BuildOutput() []string {
 	return nil
 }
 
-var windowsReplacer struct {
-	*strings.Replacer
-	once sync.Once
+var windowsPathReplacer *strings.Replacer
+
+func init() {
+	if runtime.GOOS == "windows" {
+		const invalid = `*."/\[]:;|,`
+		a := make([]string, 0, len(invalid)*2)
+		for _, r := range invalid {
+			a = append(a, string(r), `%`)
+		}
+		windowsPathReplacer = strings.NewReplacer(a...)
+	}
 }
 
-func initWindowsReplacer() {
-	const invalid = `*."/\[]:;|,`
-	a := make([]string, 0, len(invalid)*2)
-	for i := range invalid {
-		a = append(a, invalid[i:i+1], "%")
+var startGarbageCollectTestOutputOnce sync.Once
+
+func garbageCollectTestOutput(dirname string) {
+	for {
+		fis, err := ioutil.ReadDir(dirname)
+		if err != nil {
+			continue
+		}
+		for _, fi := range fis {
+			if time.Since(fi.ModTime()) > time.Hour {
+				os.Remove(filepath.Join(dirname, fi.Name()))
+			}
+		}
+		time.Sleep(time.Minute * 5)
 	}
-	windowsReplacer.Replacer = strings.NewReplacer(a...)
 }
 
 func (c *CompLintRequest) TestOutput() string {
 	dir := filepath.Join(os.TempDir(), "margo-comp-lint")
-	if os.MkdirAll(dir, 0744) != nil {
+	if os.MkdirAll(dir, 0755) != nil {
 		return os.DevNull
 	}
+	startGarbageCollectTestOutputOnce.Do(func() {
+		go garbageCollectTestOutput(dir)
+	})
 	s := c.Filename
 	if runtime.GOOS != "windows" {
 		s = strings.Replace(filepath.ToSlash(s), "/", "%", -1)
 	} else {
-		windowsReplacer.once.Do(initWindowsReplacer)
-		s = windowsReplacer.Replace(s)
+		s = windowsPathReplacer.Replace(s)
+	}
+	// The max file name is 255 on Darwin and 259 on Windows so use 254 to be safe.
+	if len(s) >= 254-len(".test") {
+		h := md5.Sum([]byte(s))
+		s = hex.EncodeToString(h[:])
 	}
 	return filepath.Join(dir, s+".test")
+}
+
+func (c *CompLintRequest) isGenerateCommand(ctxt *build.Context, pkgName string) bool {
+	if pkgName != "main" {
+		return false
+	}
+	if len(ctxt.BuildTags) == 0 {
+		return false
+	}
+	dir := filepath.Dir(c.Filename)
+	des, err := os.ReadDir(dir)
+	if err != nil {
+		return false
+	}
+	base := filepath.Base(c.Filename)
+	n := 0
+	for _, d := range des {
+		name := d.Name()
+		if !strings.HasSuffix(name, ".go") || name == base {
+			continue
+		}
+		n++
+		path := dir + string(filepath.Separator) + name
+		pkgname, _ := buildutil.ReadPackageName(path, nil)
+		if pkgName != "" && pkgname != "main" {
+			return true
+		}
+		if n == 4 {
+			break
+		}
+	}
+	return false
 }
 
 func (c *CompLintRequest) Compile(src []byte) *CompLintReport {
@@ -142,6 +200,9 @@ func (c *CompLintRequest) Compile(src []byte) *CompLintReport {
 		args = []string{"build"}
 		if extra := c.BuildOutput(); len(extra) != 0 {
 			args = append(args, extra...)
+		}
+		if c.isGenerateCommand(ctxt, pkgname) {
+			args = append(args, filepath.Base(c.Filename))
 		}
 	default:
 		args = []string{"install"}
