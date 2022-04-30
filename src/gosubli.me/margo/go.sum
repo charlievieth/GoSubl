@@ -1,7 +1,8 @@
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/charlievieth/buildutil v0.0.5/go.mod h1:ixnLv8dl9ropX3Bkbt17o7jPob5tS1hU1N96XeFCsIU=
-github.com/charlievieth/buildutil v0.0.6 h1:kVwrRKjwXy9X20Oc34EP2HxhmZx6OrffeIEXLJnqLBY=
 github.com/charlievieth/buildutil v0.0.6/go.mod h1:ixnLv8dl9ropX3Bkbt17o7jPob5tS1hU1N96XeFCsIU=
+github.com/charlievieth/buildutil v0.0.7 h1:c91I2NeeOa/Rw037HKhgykIcV8Wt4UrDalU2yR7Qfn0=
+github.com/charlievieth/buildutil v0.0.7/go.mod h1:eDgSBOQOcY2vs43qkW48KBKlUKdV6BWNLODmhxsu7aU=
 github.com/charlievieth/fs v0.0.2 h1:vu3+e3KRrIguFN4HoYqkeM9TSjduugtsfHZwFvj/PBg=
 github.com/charlievieth/fs v0.0.2/go.mod h1:74vroF06jvR8XMafvi2CYzs8WruHL1axh/qFx7XN5Xw=
 github.com/charlievieth/gocode v0.0.9 h1:3gLgSDn0TvrA1i3nOJo7qjc98t2QyWy1qWsXOAxFX2U=
@@ -10,6 +11,8 @@ github.com/charlievieth/imports v0.0.7 h1:P0O8jtcTGeujde9g0l/EGCh9Rsz+YF2lLW5iCJ
 github.com/charlievieth/imports v0.0.7/go.mod h1:eCuIINfqeGjfIaCk2cb2xpeNRz65Q7PwoT/RadQxJBg=
 github.com/charlievieth/pkgs v0.0.4 h1:TuNUoVjtY2VccIzT9hUr7nIItjtIBjYOb/zkYOgy+kM=
 github.com/charlievieth/pkgs v0.0.4/go.mod h1:YdZTpI3PARNwiV35nKrhTbrPBzCAYKaDpWEiohIozis=
+github.com/charlievieth/reonce v1.2.1 h1:V3Heg6/muvguQwFb+T02+NMrragkDy/DgTgH3Z6ogXc=
+github.com/charlievieth/reonce v1.2.1/go.mod h1:QswnAAn98PFvVf5MG10T4JSE8R3LbmapTruRdiCf7XM=
 github.com/charlievieth/xtools v0.0.0-20211105143448-950ad532c57d h1:X1gjUxeBHE2aRKKthliQ5p8FeUEypVMIcaoWk07ut00=
 github.com/charlievieth/xtools v0.0.0-20211105143448-950ad532c57d/go.mod h1:3o22PIZ5yaxZS5QTzis7XpIm+vAtjaWKDHdk7k0+URo=
 github.com/davecgh/go-spew v0.0.0-20161028175848-04cdfd42973b/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
@@ -64,8 +67,9 @@ golang.org/x/sys v0.0.0-20210119212857-b64e53b001e4/go.mod h1:h1NjWce9XRLGQEsW7w
 golang.org/x/sys v0.0.0-20210423082822-04245dca01da/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20211019181941-9d821ace8654/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
-golang.org/x/sys v0.0.0-20220422013727-9388b58f7150 h1:xHms4gcpe1YE7A3yIllJXP16CMAGuqwO2lX1mTyyRRc=
 golang.org/x/sys v0.0.0-20220422013727-9388b58f7150/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+golang.org/x/sys v0.0.0-20220429233432-b5fbb4746d32 h1:Js08h5hqB5xyWR789+QqueR6sDE8mk+YvpETZ+F6X9Y=
+golang.org/x/sys v0.0.0-20220429233432-b5fbb4746d32/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1/go.mod h1:bj7SfCRtBDWHUb9snDiAeCFNEtKQo2Wmx5Cou7ajbmo=
 golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
 golang.org/x/text v0.3.3/go.mod h1:5Zoc/QRtKVWzQhOtBMvqHzDpF6irO9z98xDceosuGiQ=
