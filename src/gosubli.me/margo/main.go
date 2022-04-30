@@ -5,46 +5,36 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"flag"
-	"fmt"
 	"io"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
 var (
-	numbers = &counter{}
+	numbers = new(counter)
 	logger  = log.New(os.Stderr, "margo: ", log.Ldate|log.Ltime|log.Lshortfile)
 
 	// TODO (CEV): use a pointer
 	sendCh = make(chan Response, 100)
 )
 
-type counter struct {
-	lck sync.Mutex
-	n   uint64
-}
+type counter uint64
 
 func (c *counter) next() uint64 {
-	c.lck.Lock()
-	defer c.lck.Unlock()
-	c.n += 1
-	return c.n
+	return atomic.AddUint64((*uint64)(c), 1)
 }
 
 func (c *counter) val() uint64 {
-	c.lck.Lock()
-	defer c.lck.Unlock()
-	return c.n
+	return atomic.LoadUint64((*uint64)(c))
 }
 
 func (c *counter) nextString() string {
-	c.lck.Lock()
-	defer c.lck.Unlock()
-	c.n += 1
-	return fmt.Sprint(c.n)
+	return strconv.FormatUint(c.next(), 10)
 }
 
 var byeFuncs struct {
@@ -111,7 +101,7 @@ func main() {
 	broker := NewBroker(in, os.Stdout, tag)
 	if poll > 0 {
 		pollSeconds := time.Second * time.Duration(poll)
-		pollCounter := &counter{}
+		pollCounter := new(counter)
 		go func() {
 			for {
 				time.Sleep(pollSeconds)
