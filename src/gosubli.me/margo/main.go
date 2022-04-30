@@ -2,11 +2,12 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"io"
-	"log"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -15,14 +16,37 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"go.uber.org/zap"
 )
+
+const DEBUG = false
 
 var (
 	numbers = new(counter)
-	logger  = log.New(os.Stderr, "margo: ", log.Ldate|log.Ltime|log.Lshortfile)
 
 	// TODO (CEV): use a pointer
 	sendCh = make(chan Response, 100)
+
+	logger = func() *zap.Logger {
+		b := make([]byte, hex.DecodedLen(8))
+		if _, err := rand.Read(b); err != nil {
+			panic(err)
+		}
+		id := hex.EncodeToString(b)
+
+		lvl := zap.WarnLevel
+		if DEBUG {
+			lvl = zap.DebugLevel
+		}
+		cfg := zap.NewProductionConfig()
+		cfg.Level = zap.NewAtomicLevelAt(lvl)
+		ll, err := cfg.Build(zap.AddStacktrace(zap.FatalLevel), zap.Fields(zap.String("id", id)))
+		if err != nil {
+			panic(err)
+		}
+		return ll
+	}()
 )
 
 type counter uint64
@@ -70,8 +94,15 @@ func main() {
 	pprofAddr := flags.String("pprof-addr", "", "HTTP address for pprof")
 	flags.Parse(os.Args[1:])
 
+	defer logger.Sync()
+	byeDefer(func() { logger.Sync() })
+
 	if *pprofAddr != "" {
-		go func() { logger.Println(http.ListenAndServe(*pprofAddr, nil)) }()
+		go func() {
+			if err := http.ListenAndServe(*pprofAddr, nil); err != nil {
+				logger.Error("failed to start pprof server", zap.Error(err))
+			}
+		}()
 	}
 
 	if maxMem <= 0 {
@@ -105,7 +136,7 @@ func main() {
 		}
 	}
 
-	broker := NewBroker(in, os.Stdout, tag)
+	broker := NewBroker(logger, in, os.Stdout, tag)
 	if poll > 0 {
 		pollSeconds := time.Second * time.Duration(poll)
 		pollCounter := new(counter)
@@ -140,7 +171,7 @@ func main() {
 			defer wg.Done()
 			defer func() {
 				if e := recover(); e != nil {
-					logger.Println("PANIC defer:", e)
+					logger.Error("panic: bye funcs", zap.Any("panic", e))
 				}
 			}()
 			fn()

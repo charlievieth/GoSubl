@@ -12,6 +12,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 type EmptyResponse struct{}
@@ -50,19 +52,18 @@ type Job struct {
 type Broker struct {
 	sync.Mutex
 
-	tag    string
-	served counter
-	start  time.Time
-	r      io.Reader
-	w      io.Writer
-	in     *bufio.Reader
-	out    *bufio.Writer // WARN (CEV): not used
-	// out    *json.Encoder // WARN (CEV): not used
+	tag     string
+	served  counter
+	start   time.Time
+	r       io.Reader
+	w       io.Writer
+	in      *bufio.Reader
+	out     *bufio.Writer // WARN (CEV): not used
 	bufPool sync.Pool
+	log     *zap.Logger
 }
 
-func NewBroker(r io.Reader, w io.Writer, tag string) *Broker {
-	w = DebugWriter(w)
+func NewBroker(log *zap.Logger, r io.Reader, w io.Writer, tag string) *Broker {
 	return &Broker{
 		tag: tag,
 		r:   r,
@@ -71,19 +72,19 @@ func NewBroker(r io.Reader, w io.Writer, tag string) *Broker {
 
 		// WARN: maybe this is the problem
 		out: bufio.NewWriterSize(w, 8*1024*1024), // 8 MB
-		// out: json.NewEncoder(w), // WARN (CEV): not used
 		bufPool: sync.Pool{
 			New: func() interface{} {
 				return new(bytes.Buffer)
 			},
 		},
+		log: log.With(zap.Namespace("broker")),
 	}
 }
 
 func (b *Broker) Send(resp Response) error {
 	err := b.SendNoLog(resp)
 	if err != nil {
-		logger.Println("Cannot send result", err)
+		b.log.Error("cannot send result", zap.Error(err))
 	}
 	return err
 }
@@ -124,7 +125,7 @@ func (b *Broker) SendNoLog(resp Response) error {
 	// which usually means the client has gone away so just ignore the error
 	b.Lock()
 	if _, err := buf.WriteTo(b.w); err != nil {
-		logger.Println("write error:", err)
+		b.log.Error("writing response", zap.Error(err))
 	}
 
 	// if _, err := b.w.Write(append(s, '\n')); err != nil {
@@ -156,11 +157,10 @@ func (b *Broker) recover(method, token string) {
 	if err := recover(); err != nil {
 		buf := make([]byte, 64*1024*1024)
 		n := runtime.Stack(buf, true)
-		logger.Printf("%v#%v PANIC: %v\n%s\n\n", method, token, err, buf[:n])
-		b.Send(Response{
-			Token: token,
-			Error: "broker: " + method + "#" + token + " PANIC",
-		})
+		b.log.Error("recovered panic", zap.String("method", method),
+			zap.String("token", token), zap.Any("panic", err),
+			zap.ByteString("stacktrace", buf[:n]),
+		)
 	}
 }
 
@@ -221,14 +221,17 @@ func (b *Broker) workerBytes(wg *sync.WaitGroup, inputCh <-chan []byte) {
 			continue
 		}
 
+		start := time.Now()
 		var req Request
 		if err := json.Unmarshal(p, &req); err != nil {
-			logger.Printf("broker: error decoding JSON: %s\n", err)
+			b.log.Error("request: decoding JSON", zap.Error(err))
 			continue
 		}
+		b.log.Debug("request: unmarshal time", zap.String("method", req.Method),
+			zap.String("token", req.Token), zap.Duration("duration", time.Since(start)))
 
 		if req.Method == "" {
-			logger.Println("broker: missing method name")
+			b.log.Warn("request: missing method name", zap.String("token", req.Token))
 			if req.Token != "" {
 				b.Send(Response{
 					Token: req.Token,
@@ -238,12 +241,18 @@ func (b *Broker) workerBytes(wg *sync.WaitGroup, inputCh <-chan []byte) {
 			continue
 		}
 
-		if err := b.handleRequest(&req); err != nil {
-			logger.Printf("broker: processing request (%q): %s\n", req.Method, err)
+		err := b.handleRequest(&req)
+		if err != nil {
+			b.log.Error("request: handle error", zap.String("method", req.Method),
+				zap.String("token", req.Token), zap.Error(err))
 			b.Send(Response{
 				Token: req.Token,
 				Error: err.Error(),
 			})
+		} else {
+			dur := time.Since(start)
+			b.log.Info("request: total time", zap.String("method", req.Method),
+				zap.String("token", req.Token), zap.Duration("duration", dur))
 		}
 	}
 }
@@ -253,7 +262,7 @@ func (b *Broker) acceptBytes(lineCh chan []byte) (stopLooping bool) {
 	if err != nil {
 		// WARN: we need should stop looping here
 		if err != io.EOF {
-			logger.Println("Cannot read input: ", err)
+			b.log.Error("accept bytes: cannot read input", zap.Error(err))
 			b.Send(Response{Error: err.Error()})
 			return false
 		}
@@ -262,8 +271,6 @@ func (b *Broker) acceptBytes(lineCh chan []byte) (stopLooping bool) {
 	if len(line) > 0 {
 		lineCh <- line
 	}
-	WriteInput(line)
-
 	return stopLooping
 }
 
@@ -271,7 +278,7 @@ func (b *Broker) accept(jobsCh chan *Job) (stopLooping bool) {
 	line, err := b.in.ReadBytes('\n')
 	if err != nil {
 		if err != io.EOF {
-			logger.Println("Cannot read input", err)
+			b.log.Error("accept: cannot read input", zap.Error(err))
 			b.Send(Response{
 				Error: err.Error(),
 			})
@@ -283,7 +290,7 @@ func (b *Broker) accept(jobsCh chan *Job) (stopLooping bool) {
 	req := &Request{}
 	if err := json.Unmarshal(line, req); err != nil {
 		// Handle
-		logger.Println("Cannot unmarshal JSPON", err)
+		b.log.Error("accept: cannot unmarshal JSON", zap.Error(err))
 		b.Send(Response{
 			Error: err.Error(),
 		})
@@ -299,18 +306,18 @@ func (b *Broker) accept(jobsCh chan *Job) (stopLooping bool) {
 
 	m := registry.Lookup(req.Method)
 	if m == nil {
-		e := "Invalid method " + req.Method
-		logger.Println(e)
+		b.log.Error("accept: invald method", zap.String("method", req.Method))
 		b.Send(Response{
 			Token: req.Token,
-			Error: e,
+			Error: "Invalid method " + req.Method,
 		})
 		return stopLooping
 	}
 
 	cl := m(b)
 	if err := json.Unmarshal(req.Body, cl); err != nil {
-		logger.Println("Cannot decode arg", err)
+		b.log.Error("accept: cannot unmarshal JSON", zap.String("method", req.Method),
+			zap.String("token", req.Token), zap.Error(err))
 		b.Send(Response{
 			Token: req.Token,
 			Error: err.Error(),
@@ -325,70 +332,6 @@ func (b *Broker) accept(jobsCh chan *Job) (stopLooping bool) {
 	}
 
 	return stopLooping
-}
-
-func (b *Broker) accept_OLD(jobsCh chan<- *Job) (stopLooping bool) {
-	line, err := b.in.ReadBytes('\n')
-
-	// WARN
-	WriteInput(line)
-
-	if err == io.EOF {
-		stopLooping = true
-	} else if err != nil {
-		logger.Println("Cannot read input", err)
-		b.Send(Response{
-			Error: err.Error(),
-		})
-		return
-	}
-
-	req := &Request{}
-	dec := json.NewDecoder(bytes.NewReader(line))
-	// if this fails, we are unable to return a useful error(no token to send it to)
-	// so we'll simply/implicitly drop the request since it has no method
-	// we can safely assume that all such cases will be empty lines and not an actual request
-	dec.Decode(&req)
-
-	if req.Method == "" {
-		return
-	}
-
-	// WARN: this appears to no be used
-	if req.Method == "bye-ni" {
-		return true
-	}
-
-	m := registry.Lookup(req.Method)
-	if m == nil {
-		e := "Invalid method " + req.Method
-		logger.Println(e)
-		b.Send(Response{
-			Token: req.Token,
-			Error: e,
-		})
-		return
-	}
-
-	cl := m(b)
-	err = dec.Decode(cl)
-	if err != nil {
-		logger.Println("Cannot decode arg", err)
-		b.Send(Response{
-			Token: req.Token,
-			Error: err.Error(),
-		})
-		return
-	}
-
-	jobsCh <- &Job{
-		Method: req.Method,
-		Token:  req.Token,
-		// Req:    req,
-		Caller: cl,
-	}
-
-	return
 }
 
 func (b *Broker) worker(wg *sync.WaitGroup, jobsCh chan *Job) {
@@ -424,11 +367,13 @@ func (b *Broker) LoopBytes(decorate bool, wait bool) {
 	ppid := os.Getppid()
 	proc, err := os.FindProcess(ppid)
 	if err != nil {
-		logger.Fatalf("error: failed to find parent process (%d): %s", ppid, err)
+		b.log.Error("error: failed to find parent process",
+			zap.Int("ppid", ppid), zap.Error(err))
 	}
 	if runtime.GOOS != "windows" {
 		if err := proc.Signal(syscall.Signal(0)); err != nil {
-			logger.Fatalf("error: signalling parent process (%d): %s", ppid, err)
+			b.log.Error("error: signalling parent process",
+				zap.Int("ppid", ppid), zap.Error(err))
 		}
 	}
 
@@ -436,7 +381,7 @@ func (b *Broker) LoopBytes(decorate bool, wait bool) {
 		if b.acceptBytes(lineCh) {
 			// If acceptBytes() returns true check if our parent process died.
 			if proc.Signal(syscall.Signal(0)) != nil {
-				logger.Println("exiting: parent process died")
+				b.log.Warn("exiting: parent process died", zap.Int("ppid", proc.Pid))
 				break
 			}
 			// short break to prevent a hot loop
