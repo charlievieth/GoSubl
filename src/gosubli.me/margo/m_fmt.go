@@ -178,7 +178,6 @@ Loop:
 	}
 	var dontCache bool
 	res := fixImportsRes
-	// if res == nil || (res.Err != nil && formatOnlyRes != nil && formatOnlyRes.Err == nil) {
 	if res == nil {
 		if f.FormatOnly {
 			// Imports failed to complete in time or there was an error,
@@ -186,7 +185,7 @@ Loop:
 			// faster on a subsequent call.
 			dontCache = true
 		}
-		if res.Err != nil && formatOnlyRes != nil && formatOnlyRes.Err == nil {
+		if formatOnlyRes != nil && formatOnlyRes.Err == nil {
 			res = formatOnlyRes
 		}
 	}
