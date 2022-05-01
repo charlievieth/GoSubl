@@ -97,6 +97,10 @@ func (b *Broker) SendNoLog(resp Response) error {
 	if resp.Tag == "" {
 		resp.Tag = b.tag
 	}
+	if resp.Error != "" {
+		b.log.Warn("broker: response error", zap.String("token", resp.Token),
+			zap.String("error", resp.Error))
+	}
 
 	s, err := json.Marshal(resp)
 	if err != nil {

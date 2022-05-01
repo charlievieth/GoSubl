@@ -18,6 +18,8 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+	"gosubli.me/margo/internal/logwriter"
 )
 
 const DEBUG = false
@@ -39,13 +41,19 @@ var (
 		if DEBUG {
 			lvl = zap.DebugLevel
 		}
+
 		cfg := zap.NewProductionConfig()
 		cfg.Level = zap.NewAtomicLevelAt(lvl)
-		ll, err := cfg.Build(zap.AddStacktrace(zap.FatalLevel), zap.Fields(zap.String("id", id)))
-		if err != nil {
-			panic(err)
+		cfg.OutputPaths = []string{"async:stderr"}
+		enc := zapcore.NewJSONEncoder(cfg.EncoderConfig)
+		sink := &logwriter.BufferedWriteSyncer{
+			WS: zapcore.AddSync(os.Stderr),
 		}
-		return ll
+		return zap.New(
+			zapcore.NewCore(enc, sink, cfg.Level),
+			zap.AddCaller(), zap.AddStacktrace(zap.FatalLevel),
+			zap.Fields(zap.String("id", id)),
+		)
 	}()
 )
 
@@ -94,8 +102,12 @@ func main() {
 	pprofAddr := flags.String("pprof-addr", "", "HTTP address for pprof")
 	flags.Parse(os.Args[1:])
 
-	defer logger.Sync()
 	byeDefer(func() { logger.Sync() })
+	defer func() {
+		logger.Warn("margo exiting")
+		logger.Sync()
+	}()
+	logger.Warn("margo starting")
 
 	if *pprofAddr != "" {
 		go func() {
@@ -165,8 +177,8 @@ func main() {
 
 	byeFuncs.Lock()
 	wg := new(sync.WaitGroup)
-	wg.Add(len(byeFuncs.fns))
 	for _, fn := range byeFuncs.fns {
+		wg.Add(1)
 		go func(fn func()) {
 			defer wg.Done()
 			defer func() {
