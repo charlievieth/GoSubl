@@ -16,7 +16,7 @@ import (
 	"sync"
 
 	"github.com/charlievieth/gocode"
-	"gosubli.me/margo/lru"
+	"gosubli.me/margo/internal/lru"
 )
 
 type GoCode struct {

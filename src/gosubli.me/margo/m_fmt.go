@@ -17,7 +17,7 @@ import (
 	"github.com/charlievieth/imports"
 	"github.com/charlievieth/imports/gocommand"
 	"golang.org/x/sync/singleflight"
-	"gosubli.me/margo/lru"
+	"gosubli.me/margo/internal/lru"
 )
 
 // TODO: add configurable Timeout for goimports
