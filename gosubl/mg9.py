@@ -4,7 +4,7 @@ import json
 import os
 import threading
 import time
-import uuid
+from secrets import token_hex
 from collections import OrderedDict
 
 import sublime
@@ -17,6 +17,7 @@ from gosubl import sh
 from gosubl.typing import Any
 from gosubl.typing import Callable
 from gosubl.typing import Dict
+from gosubl.utils import Counter
 
 DOMAIN = "MarGo"
 REQUEST_PREFIX = "%s.rqst." % DOMAIN
@@ -25,8 +26,11 @@ TAG = about.VERSION
 INSTALL_VERSION = about.VERSION
 INSTALL_EXE = about.MARGO_EXE
 
+REQUEST_RAND_ID = token_hex(3)
+REQUEST_COUNTER = Counter()
 
-def gs_init(m={}):
+
+def gs_init(m={}) -> None:
     """Called by GoSublime.py::plugin_loaded
         m = {
                 'version': VERSION,
@@ -52,22 +56,27 @@ def gs_init(m={}):
     force = about.FORCE_INSTALL is True
     # install_version recorded in 'GoSublime-aux.sublime-settings'
     aso_install_vesion = gs.aso().get("install_version", "")
-    f = lambda: install(aso_install_vesion, force)
+
+    def install_fn() -> None:
+        install(aso_install_vesion, force)
+
     # GsQ handles threaded processes.
     # Install latest version.
-    gsq.do("GoSublime", f, msg="Installing MarGo", set_status=False)
+    gsq.do("GoSublime", install_fn, msg="Installing MarGo", set_status=False)
 
 
 class Request:
     __slots__ = "callback", "method", "token", "_start"
 
-    def __init__(self, callback: Callable, method: str = "", token: str = ""):
+    def __init__(self, callback: Callable, method: str = "", token: str = "") -> None:
         self.callback = callback
         self.method = method
-        self.token = token or "mg9.autoken.%s" % uuid.uuid4()
+        self.token = token or "mg9.autoken.{}.{}".format(
+            REQUEST_RAND_ID, REQUEST_COUNTER.next(),
+        )
         self._start = time.time()
 
-    def header(self):
+    def header(self) -> Dict[str, str]:
         return {"method": self.method, "token": self.token}
 
     def reset_start_time(self) -> None:
