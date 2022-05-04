@@ -1,5 +1,6 @@
 import copy
 import datetime
+import gzip
 import json
 import os
 import queue
@@ -11,6 +12,9 @@ import threading
 import traceback as tbck
 
 from locale import getpreferredencoding
+from pathlib import Path
+from platform import system
+from shutil import copyfileobj
 from subprocess import Popen, PIPE
 
 from gosubl import about
@@ -22,6 +26,7 @@ from gosubl.typing import Optional
 from gosubl.typing import Tuple
 from gosubl.typing import TypeVar
 from gosubl.typing import Union
+from gosubl.typing import IO
 from gosubl.utils import Counter
 
 import sublime
@@ -47,6 +52,8 @@ else:
     STARTUP_INFO = None
 
 NAME = "GoSubl"
+MAX_LOG_BYTES = 5 * 1024 * 1024
+LOGFILE: IO = None
 
 mg9_send_q = queue.Queue()
 mg9_recv_q = queue.Queue()
@@ -967,6 +974,37 @@ def home_path(*path: str) -> str:
     return fn
 
 
+def init_log_file(
+    max_bytes: int = MAX_LOG_BYTES,
+    backup_count: int = 5,
+) -> str:
+    if system() == "Darwin":
+        fp = Path("~/Library/Logs/GoSublime/gosubl.log").expanduser()
+    else:
+        fp = Path(home_path()) / "gosubl.log"
+
+    if not fp.exists():
+        fp.parent.mkdir(parents=True, exist_ok=True)
+        fp.touch()
+
+    elif max_bytes > 0 and fp.stat().st_size >= max_bytes:
+        ts = int(datetime.datetime.utcnow().timestamp())
+        new = fp.parent / f"{ts}.{fp.name}.gz"
+        if not new.exists():
+            with open(fp, 'rb') as f_in:
+                with gzip.open(new, 'xb') as f_out:
+                    copyfileobj(f_in, f_out)
+            fp.unlink()  # delete
+            fp.touch()   # recreate
+
+    if backup_count > 0:
+        backups = sorted(fp.parent.glob("*.gz"))
+        while backups and len(backups) > backup_count:
+            backups.pop(0).unlink(missing_ok=True)
+
+    return str(fp)
+
+
 # TODO: these are only used in sed/recv and should be removed
 def json_decode(s, default):
     """Decodes JSON s and checks if it is an instance of default.
@@ -1061,8 +1099,6 @@ sm_set_text = ""
 st2_status_message = sublime.status_message
 sublime.status_message = status_message
 
-DEVNULL = open(os.devnull, "w")
-LOGFILE = DEVNULL
 
 # WARN (CEV): WTF is this ???
 try:
@@ -1074,11 +1110,12 @@ except Exception:
 def gs_init(m={}):
     """init gs module.
     """
+
     global LOGFILE
     try:
-        LOGFILE = open(home_path("log.txt"), "a+")
+        LOGFILE = open(init_log_file(), "a+")
     except Exception as ex:
-        LOGFILE = DEVNULL
+        LOGFILE = open(os.devnull, "w")
         notice(
             NAME,
             "Cannot create log file. Remote(margo) and persistent logging will be disabled. Error: %s"
