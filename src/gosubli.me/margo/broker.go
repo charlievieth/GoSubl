@@ -255,7 +255,7 @@ func (b *Broker) workerBytes(wg *sync.WaitGroup, inputCh <-chan []byte) {
 			})
 		} else {
 			dur := time.Since(start)
-			b.log.Info("request: total time", zap.String("method", req.Method),
+			b.log.Debug("request: total time", zap.String("method", req.Method),
 				zap.String("token", req.Token), zap.Duration("duration", dur))
 		}
 	}

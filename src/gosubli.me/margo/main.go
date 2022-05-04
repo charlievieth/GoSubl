@@ -37,7 +37,7 @@ var (
 		}
 		id := hex.EncodeToString(b)
 
-		lvl := zap.WarnLevel
+		lvl := zap.InfoLevel
 		if DEBUG {
 			lvl = zap.DebugLevel
 		}
@@ -45,15 +45,20 @@ var (
 		cfg := zap.NewProductionConfig()
 		cfg.Level = zap.NewAtomicLevelAt(lvl)
 		cfg.OutputPaths = []string{"async:stderr"}
-		enc := zapcore.NewJSONEncoder(cfg.EncoderConfig)
+
+		cfg.Encoding = "console"
+		cfg.EncoderConfig = zap.NewDevelopmentEncoderConfig()
+
+		// enc := zapcore.NewJSONEncoder(cfg.EncoderConfig)
+		enc := zapcore.NewConsoleEncoder(cfg.EncoderConfig)
 		sink := &logwriter.BufferedWriteSyncer{
 			WS: zapcore.AddSync(os.Stderr),
 		}
-		return zap.New(
+		ll := zap.New(
 			zapcore.NewCore(enc, sink, cfg.Level),
 			zap.AddCaller(), zap.AddStacktrace(zap.FatalLevel),
-			zap.Fields(zap.String("id", id)),
 		)
+		return ll.Named("margo_" + id)
 	}()
 )
 
