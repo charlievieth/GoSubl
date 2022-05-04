@@ -757,6 +757,9 @@ def _send():
                         "-tag",
                         TAG,
                     ]
+                    # WARN: enable debugging
+                    if about.MARGO_PPROF_ADDR:
+                        cmd += ["-pprof-addr", about.MARGO_PPROF_ADDR]
 
                     c = sh.Command(cmd)
                     c.stderr = gs.LOGFILE
