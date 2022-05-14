@@ -118,11 +118,13 @@ class SourceLocation(object):
     def __init__(
         self,
         filename: str,
+        relname: str,
         line: int,
         col_start: int,
         col_end: int,
     ) -> None:
         self.filename = filename
+        self.relname = relname
         self._basename = None  # type: Optional[str]
         self.line = int(line)
         self.col_start = int(col_start)
@@ -132,6 +134,7 @@ class SourceLocation(object):
     def from_margo(cls, loc: dict) -> "SourceLocation":
         return SourceLocation(
             loc["filename"],
+            loc.get("relname", ""),
             loc["line"],
             loc["col_start"],
             loc["col_end"],
@@ -139,6 +142,14 @@ class SourceLocation(object):
 
     @property
     def basename(self) -> str:
+        if not self._basename:
+            self._basename = path.basename(self.filename)
+        return self._basename
+
+    @property
+    def display_name(self) -> str:
+        if self.relname:
+            return self.relname
         if not self._basename:
             self._basename = path.basename(self.filename)
         return self._basename
@@ -158,7 +169,7 @@ class SourceLocation(object):
 
     def usage(self) -> Dict[str, str]:
         return {
-            'title': '{}:{}:{}'.format(self.basename, self.line, self.col_start),
+            'title': '{}:{}:{}'.format(self.display_name, self.line, self.col_start),
             'location': self.location(),
             'position': self.position(),
         }

@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/charlievieth/buildutil"
+	"github.com/charlievieth/buildutil/contextutil"
 )
 
 // TODO: include src one we start talking to gopls directly
@@ -25,6 +26,7 @@ type ReferencesRequest struct {
 
 type SourceLocation struct {
 	Filename string `json:"filename"`
+	Relname  string `json:"relname,omitempty"` // relative path
 	Line     int    `json:"line"`
 	ColStart int    `json:"col_start"`
 	ColEnd   int    `json:"col_end"`
@@ -226,7 +228,7 @@ func (r *ReferencesRequest) Call() (interface{}, string) {
 	defer cancel()
 
 	dir := filepath.ToSlash(filepath.Dir(r.Filename))
-	root := projectRoot(contextFromEnv(r.Env), dir)
+	root, _ := contextutil.FindProjectRoot(&build.Default, dir)
 
 	// TODO: use line/column (note: unicode is handled on the python side)
 
@@ -299,6 +301,19 @@ func (r *ReferencesRequest) Call() (interface{}, string) {
 	all := append(local, samePkg...)
 	all = append(all, sameProject...)
 	all = append(all, other...)
+
+	if root != "" {
+		for i, s := range all {
+			name := filepath.ToSlash(s.Filename)
+			if strings.HasPrefix(name, root) {
+				rel, err := filepath.Rel(root, name)
+				if err != nil {
+					continue
+				}
+				all[i].Relname = rel
+			}
+		}
+	}
 
 	return all, ""
 }
