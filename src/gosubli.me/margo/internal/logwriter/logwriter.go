@@ -97,6 +97,12 @@ func (s *BufferedWriteSyncer) flushNoSync() {
 		if s.initialized && s.writer.Buffered() != 0 {
 			_ = s.writer.Flush()
 		}
+	} else if len(s.flush) == 0 {
+		// re-queue a flush
+		select {
+		case s.flush <- struct{}{}:
+		default:
+		}
 	}
 }
 
