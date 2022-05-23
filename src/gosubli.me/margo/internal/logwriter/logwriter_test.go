@@ -157,50 +157,45 @@ func TestBufferWriterWithoutStart(t *testing.T) {
 	})
 }
 
+type StopWriteSyncer interface {
+	zapcore.WriteSyncer
+	Stop() error
+}
+
+func benchmarkBufferedWriteSyncer(b *testing.B, fn func(f *os.File) StopWriteSyncer) {
+	file, err := ioutil.TempFile("", "log")
+	require.NoError(b, err)
+
+	defer func() {
+		assert.NoError(b, file.Close())
+		assert.NoError(b, os.Remove(file.Name()))
+	}()
+
+	w := fn(file)
+	defer w.Stop()
+	const data = "foobarbazbabble"
+	b.SetBytes(int64(len(data)))
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		b := []byte(data)
+		for pb.Next() {
+			w.Write(b)
+		}
+	})
+}
+
 func BenchmarkBufferedWriteSyncer_Base(b *testing.B) {
-	b.Run("write file with buffer", func(b *testing.B) {
-		file, err := ioutil.TempFile("", "log")
-		require.NoError(b, err)
-
-		defer func() {
-			assert.NoError(b, file.Close())
-			assert.NoError(b, os.Remove(file.Name()))
-		}()
-
-		w := &zapcore.BufferedWriteSyncer{
+	benchmarkBufferedWriteSyncer(b, func(file *os.File) StopWriteSyncer {
+		return &zapcore.BufferedWriteSyncer{
 			WS: zapcore.AddSync(file),
 		}
-		defer w.Stop()
-		b.SetBytes(int64(len("foobarbazbabble")))
-		b.ResetTimer()
-		b.RunParallel(func(pb *testing.PB) {
-			for pb.Next() {
-				w.Write([]byte("foobarbazbabble"))
-			}
-		})
 	})
 }
 
 func BenchmarkBufferedWriteSyncer(b *testing.B) {
-	b.Run("write file with buffer", func(b *testing.B) {
-		file, err := ioutil.TempFile("", "log")
-		require.NoError(b, err)
-
-		defer func() {
-			assert.NoError(b, file.Close())
-			assert.NoError(b, os.Remove(file.Name()))
-		}()
-
-		w := &BufferedWriteSyncer{
+	benchmarkBufferedWriteSyncer(b, func(file *os.File) StopWriteSyncer {
+		return &BufferedWriteSyncer{
 			WS: zapcore.AddSync(file),
 		}
-		defer w.Stop()
-		b.SetBytes(int64(len("foobarbazbabble")))
-		b.ResetTimer()
-		b.RunParallel(func(pb *testing.PB) {
-			for pb.Next() {
-				w.Write([]byte("foobarbazbabble"))
-			}
-		})
 	})
 }
