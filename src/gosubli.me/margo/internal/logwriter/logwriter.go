@@ -40,7 +40,7 @@ type BufferedWriteSyncer struct {
 func (s *BufferedWriteSyncer) initialize() {
 	size := s.Size
 	if size <= 0 {
-		size = 8 * 1024
+		size = 32 * 1024
 	}
 	flushInterval := s.FlushInterval
 	if flushInterval <= 0 {
