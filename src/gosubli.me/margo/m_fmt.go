@@ -81,10 +81,13 @@ func (*FormatRequest) hasUnsortedImports(file *ast.File) bool {
 	return false
 }
 
+var ErrCgoNotSupported = errors.New("fmt: cgo not supported")
+
 func (f *FormatRequest) callTimeout() (*FormatResponse, error) {
 	type Response struct {
-		Out []byte
-		Err error
+		Out     []byte
+		Err     error
+		Imports bool
 	}
 
 	src := []byte(f.Src)
@@ -94,7 +97,7 @@ func (f *FormatRequest) callTimeout() (*FormatResponse, error) {
 	hasCGO := false
 	fset := token.NewFileSet()
 	af, parseErr := parser.ParseFile(fset, f.Filename, src, parser.ParseComments)
-	if parseErr == nil {
+	if af != nil {
 		for _, imp := range af.Imports {
 			if imp.Path != nil && imp.Path.Value == `"C"` {
 				hasCGO = true
@@ -103,27 +106,40 @@ func (f *FormatRequest) callTimeout() (*FormatResponse, error) {
 		}
 	}
 
-	call := func(ch chan<- *Response, fn func() ([]byte, error)) {
+	// Fast path for cgo files when FixCGO is false
+	if hasCGO && !f.FixCGO {
+		b, err := f.formatFile(fset, af)
+		if err != nil {
+			return &FormatResponse{NoChange: true}, err
+		}
+		if bytes.Equal(src, b) {
+			return &FormatResponse{NoChange: true}, nil
+		}
+		return &FormatResponse{Src: string(b), dontCache: false}, nil
+	}
+
+	call := func(ch chan<- *Response, fn func() ([]byte, bool, error)) {
 		go func() {
-			var out []byte
-			var err error
+			var (
+				out       []byte
+				err       error
+				isImports bool
+			)
 			if e := recover(); e != nil {
 				err = f.recoverErr(e)
 				out = src
 				select {
-				case ch <- &Response{out, err}:
+				case ch <- &Response{out, err, isImports}:
 				default:
 				}
 			}
-			out, err = fn()
-			ch <- &Response{out, err}
+			out, isImports, err = fn()
+			ch <- &Response{out, err, isImports}
 		}()
 	}
 
-	fixImportsCh := make(chan *Response, 1)
-	formatOnlyCh := make(chan *Response, 1)
-
-	call(fixImportsCh, func() ([]byte, error) {
+	resCh := make(chan *Response, 2)
+	call(resCh, func() ([]byte, bool, error) {
 		// goimports is very slow when "C" is imported
 		if !hasCGO || f.FixCGO {
 			// TODO: allow configuring env var overrides
@@ -139,16 +155,18 @@ func (f *FormatRequest) callTimeout() (*FormatResponse, error) {
 					// TODO: set the Env field
 				},
 			}
-			return imports.Process(f.Filename, src, &opts)
+			b, err := imports.Process(f.Filename, src, &opts)
+			return b, true, err
 		}
-		return nil, errors.New("fmt: cgo not supported")
+		return nil, true, ErrCgoNotSupported
 	})
-	call(formatOnlyCh, func() ([]byte, error) {
+	call(resCh, func() ([]byte, bool, error) {
 		// TODO: handle code fragments
 		if af != nil && parseErr == nil {
-			return f.formatFile(fset, af)
+			b, err := f.formatFile(fset, af)
+			return b, false, err
 		}
-		return nil, parseErr
+		return nil, false, parseErr
 	})
 
 	start := time.Now()
@@ -156,21 +174,17 @@ func (f *FormatRequest) callTimeout() (*FormatResponse, error) {
 	defer timeout.Stop()
 
 	timedOut := false
-	var fixImportsRes *Response
-	var formatOnlyRes *Response
+	respones := make([]*Response, 0, 2)
 Loop:
-	for {
+	for i := 0; i < 2; i++ {
 		select {
-		case fixImportsRes = <-fixImportsCh:
-			if fixImportsRes.Err == nil || formatOnlyRes != nil {
-				break Loop
-			}
-		case formatOnlyRes = <-formatOnlyCh:
-			if formatOnlyRes.Err != nil || fixImportsRes != nil {
+		case r := <-resCh:
+			respones = append(respones, r)
+			if r.Imports && r.Err == nil {
 				break Loop
 			}
 		case <-timeout.C:
-			if timedOut || formatOnlyRes != nil || fixImportsRes != nil {
+			if timedOut {
 				break Loop
 			}
 			timedOut = true
@@ -178,28 +192,44 @@ Loop:
 			timeout.Reset(time.Millisecond * 200)
 		}
 	}
-	var dontCache bool
-	res := fixImportsRes
+
+	if len(respones) == 0 {
+		if timedOut {
+			return &FormatResponse{}, fmt.Errorf("fmt: timed out after: %s", time.Since(start))
+		}
+		return &FormatResponse{}, errors.New("failed to format file: nil response")
+	}
+
+	var res *Response
+	for _, r := range respones {
+		if res == nil {
+			res = r // Set to the first response
+		}
+		if r.Imports && len(r.Out) != 0 {
+			res = r // Change to the Imports response if we have it
+		}
+	}
 	if res == nil {
-		if f.FormatOnly {
-			// Imports failed to complete in time or there was an error,
-			// so don't cache the result since imports will likly run
-			// faster on a subsequent call.
-			dontCache = true
-		}
-		if formatOnlyRes != nil && formatOnlyRes.Err == nil {
-			res = formatOnlyRes
+		// This should never happen
+		return &FormatResponse{}, errors.New("internal error: nil response")
+	}
+	if res.Err != nil {
+		// See if we have a response without an error
+		for _, r := range respones {
+			if r.Err == nil && r.Out != nil {
+				res = r
+				break
+			}
 		}
 	}
-	if res != nil {
-		if res.Err != nil {
-			return &FormatResponse{NoChange: true}, res.Err
-		}
-		if bytes.Equal(src, res.Out) {
-			return &FormatResponse{NoChange: true}, nil
-		}
-		return &FormatResponse{Src: string(res.Out), dontCache: dontCache}, nil
+	if res.Err != nil {
+		return &FormatResponse{NoChange: true}, res.Err
 	}
+	if bytes.Equal(src, res.Out) {
+		return &FormatResponse{NoChange: true}, nil
+	}
+	return &FormatResponse{Src: string(res.Out), dontCache: false}, nil
+
 	if timedOut {
 		return &FormatResponse{}, fmt.Errorf("fmt: timed out after: %s", time.Since(start))
 	}
