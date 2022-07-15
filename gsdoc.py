@@ -90,7 +90,7 @@ class GsDocCommand(sublime_plugin.TextCommand):
             if fn:
                 row = d.get("row", 0) + 1
                 col = d.get("col", 0) + 1
-                Jumper(self.view, "{}:{}:{}".format(fn, row, col)).jump()
+                Jumper(self.view, "{}:{}:{}".format(fn, row, col), True).jump()
         else:
             self.show_output("%s: cannot find definition" % DOMAIN)
 

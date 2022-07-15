@@ -7,6 +7,8 @@ import sublime
 
 from Default.history_list import get_jump_history_for_view
 
+from gosubl import gs
+
 from .gosubl.typing import List
 from .gosubl.typing import Optional
 
@@ -122,13 +124,19 @@ class ExplorerPanel:
 class Jumper:
     """Jump to the specified file line and column making an indicator to toggle"""
 
-    __slots__ = "position", "view", "new_view"
+    __slots__ = "position", "view", "new_view", "force_go_syntax"
 
-    def __init__(self, view: sublime.View, position: str) -> None:
+    def __init__(
+        self,
+        view: sublime.View,
+        position: str,
+        force_go_syntax: bool = False,
+    ) -> None:
         # CEV: position is: "File:Line:Column"
         self.position = position
         self.view = view
         self.new_view: Optional[sublime.View] = None
+        self.force_go_syntax = force_go_syntax
 
     def jump(self, transient: bool = False) -> None:
         """Jump to the selection"""
@@ -144,6 +152,13 @@ class Jumper:
         )
         if not transient and self.new_view:
             sublime.set_timeout_async(self._toggle_indicator, 0)
+        if self.force_go_syntax and self.new_view:
+            sublime.set_timeout_async(self._set_go_syntax, 0)
+
+    def _set_go_syntax(self) -> None:
+        view = self.new_view
+        if view and view_is_loaded(view):
+            view.set_syntax_file(gs.tm_path("go"))
 
     def _toggle_indicator(self) -> None:
         """Toggle mark indicator to focus the cursor"""
