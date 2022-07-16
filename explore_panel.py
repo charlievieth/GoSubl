@@ -148,10 +148,11 @@ class Jumper:
             self.position,
             flags,
         )
-        if not transient and self.new_view:
-            sublime.set_timeout_async(self._toggle_indicator, 0)
-        if self.force_go_syntax and self.new_view:
-            sublime.set_timeout_async(self._set_go_syntax, 0)
+        if self.new_view:
+            if self.force_go_syntax:
+                sublime.set_timeout_async(self._set_go_syntax, 0)
+            if not transient:
+                sublime.set_timeout_async(self._toggle_indicator, 0)
 
     def _set_go_syntax(self) -> None:
         # WARN: load "gs" here because Sublime loads files by name and
@@ -159,8 +160,11 @@ class Jumper:
         from gosubl import gs
 
         view = self.new_view
-        if view and view_is_loaded(view):
-            view.set_syntax_file(gs.tm_path("go"))
+        if view and view_is_loaded(view) and not view_file_name(view).endswith(".go"):
+            syntax = view.syntax()
+            go_syntax = gs.tm_path("go")
+            if syntax and syntax.path != go_syntax:
+                view.set_syntax_file(go_syntax)
 
     def _toggle_indicator(self) -> None:
         """Toggle mark indicator to focus the cursor"""
@@ -193,6 +197,14 @@ class Jumper:
             sublime.set_timeout(
                 lambda: view.erase_regions(region_name), delta + 300
             )
+
+
+def view_file_name(view: sublime.View) -> str:
+    name = view.file_name()
+    if name:
+        return name
+    else:
+        return ""
 
 
 def view_is_loaded(view: sublime.View) -> bool:
