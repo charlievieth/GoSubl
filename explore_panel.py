@@ -3,14 +3,12 @@
 
 from time import sleep
 
+from typing import List
+from typing import Optional
+
 import sublime
 
 from Default.history_list import get_jump_history_for_view
-
-from gosubl import gs
-
-from .gosubl.typing import List
-from .gosubl.typing import Optional
 
 
 class ExplorerPanel:
@@ -156,6 +154,10 @@ class Jumper:
             sublime.set_timeout_async(self._set_go_syntax, 0)
 
     def _set_go_syntax(self) -> None:
+        # WARN: load "gs" here because Sublime loads files by name and
+        # GoSublime.py is required to make "gosubl" importable.
+        from gosubl import gs
+
         view = self.new_view
         if view and view_is_loaded(view):
             view.set_syntax_file(gs.tm_path("go"))

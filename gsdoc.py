@@ -5,8 +5,8 @@ from os import path
 import sublime
 import sublime_plugin
 
-from .explore_panel import ExplorerPanel
-from .explore_panel import Jumper
+from explore_panel import ExplorerPanel
+from explore_panel import Jumper
 
 from gosubl.typing import Dict
 from gosubl.typing import List
