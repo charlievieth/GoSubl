@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/charlievieth/buildutil"
 	"github.com/charlievieth/buildutil/contextutil"
@@ -248,9 +249,19 @@ func (r *ReferencesRequest) Call() (interface{}, string) {
 	watchCmd(id, cmd)
 	defer unwatchCmd(id)
 
-	var res []*SourceLocation
-	if err := cmd.Run(); err != nil {
-		return res, fmt.Sprintf("%s: %s", err.Error(), stderr.String())
+	res := []*SourceLocation{}
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- cmd.Run()
+	}()
+	select {
+	case err := <-errCh:
+		if err != nil {
+			return res, fmt.Sprintf("gopls: references: %s: %s", err.Error(),
+				strings.TrimSpace(stderr.String()))
+		}
+	case <-time.After(time.Second * 30):
+		return res, fmt.Sprintf("gopls: references: timed out")
 	}
 
 	var first error
