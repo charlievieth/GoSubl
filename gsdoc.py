@@ -8,10 +8,10 @@ import sublime_plugin
 from explore_panel import ExplorerPanel
 from explore_panel import Jumper
 
-from gosubl.typing import Dict
-from gosubl.typing import List
-from gosubl.typing import Union
-from gosubl.typing import Optional
+from typing import Dict
+from typing import List
+from typing import Union
+from typing import Optional
 
 from gosubl import gs
 from gosubl import gsq

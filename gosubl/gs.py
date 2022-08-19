@@ -18,15 +18,15 @@ from shutil import copyfileobj
 from subprocess import Popen, PIPE
 
 from gosubl import about
-from gosubl.typing import Any
-from gosubl.typing import Callable
-from gosubl.typing import Dict
-from gosubl.typing import List
-from gosubl.typing import Optional
-from gosubl.typing import Tuple
-from gosubl.typing import TypeVar
-from gosubl.typing import Union
-from gosubl.typing import IO
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import TypeVar
+from typing import Union
+from typing import IO
 from gosubl.utils import Counter
 
 import sublime

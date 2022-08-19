@@ -4,8 +4,16 @@ import json
 import os
 import threading
 import time
-from secrets import token_hex
+
 from collections import OrderedDict
+from secrets import token_hex
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import TypedDict
 
 import sublime
 
@@ -14,9 +22,6 @@ from gosubl import ev
 from gosubl import gs
 from gosubl import gsq
 from gosubl import sh
-from gosubl.typing import Any
-from gosubl.typing import Callable
-from gosubl.typing import Dict
 from gosubl.utils import Counter
 
 DOMAIN = "MarGo"

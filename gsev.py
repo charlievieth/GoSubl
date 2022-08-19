@@ -1,9 +1,10 @@
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+
 import gstest
 from gosubl import gs
-from gosubl.typing import Any
-from gosubl.typing import Dict
-from gosubl.typing import List
-from gosubl.typing import Optional
 
 import sublime
 import sublime_plugin

@@ -1,10 +1,10 @@
 from copy import deepcopy
 from threading import Lock
 
-from gosubl.typing import Any
-from gosubl.typing import Dict
-from gosubl.typing import Iterator
-from gosubl.typing import Mapping
+from typing import Any
+from typing import Dict
+from typing import Iterator
+from typing import Mapping
 
 import sublime
 

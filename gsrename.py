@@ -1,8 +1,8 @@
 import sublime
 import sublime_plugin
 
-from gosubl.typing import Dict
-from gosubl.typing import Optional
+from typing import Dict
+from typing import Optional
 
 from gosubl import gs
 from gosubl import mg9
