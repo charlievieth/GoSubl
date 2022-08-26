@@ -3,6 +3,8 @@ import traceback
 
 
 class Event(object):
+    __slots__ = "lck", "lst", "post_add"
+
     def __init__(self):
         self.lck = threading.Lock()
 
@@ -18,9 +20,9 @@ class Event(object):
         """Called when Event is "called" as a function.
         """
         with self.lck:
-            l = self.lst[:]
+            lst = self.lst[:]
 
-        for f in l:
+        for f in lst:
             try:
                 f(*args, **kwargs)
             except Exception:
@@ -57,13 +59,38 @@ class Event(object):
             return len(self.lst)
 
 
+# TODO: remove
+class NoopEvent(object):
+    __slots__ = "post_add"
+
+    def __init__(self) -> None:
+        self.post_add = None
+
+    def __call__(self, *args, **kwargs) -> None:
+        pass
+
+    def __iadd__(self, f) -> int:
+        return 0
+
+    def __isub__(self, f) -> int:
+        return 0
+
+    def __len__(self) -> int:
+        return 0
+
+
 # TODO: Figure out how these are used.
 
+# TODO: remove
+#
 # CEV: Called from mg9.py and sh.py.
 #
 # It appears that by setting from handlers (loggers) to Event.lst this can
 # be used for debugging.
-debug = Event()
+# debug = Event()
+# def noop(*kwargs) -> None:
+#     pass
+debug = NoopEvent()
 
 # CEV: Appears to only be used by GoSublime.py
 init = Event()

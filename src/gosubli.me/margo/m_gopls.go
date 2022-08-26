@@ -170,6 +170,41 @@ func GuruCmd(ctx context.Context, cmd, filename string, env map[string]string, s
 	return nil
 }
 
+// TODO: use this to determine is a symbol is exported. If not, we
+// can maybe use gopls to make it faster.
+//
+// func isBoundary(r byte) bool {
+// 	switch r {
+// 	case ' ', '\t', '\n', '\r', '!', '%', '&', '(', ')', '*', '+', ',', '-',
+// 		'.', '/', ':', ';', '<', '=', '>', '[', ']', '^', '{', '|', '}':
+// 		return true
+// 	}
+// 	return false
+// }
+//
+// func SymbolName(src string, offset int) (string, error) {
+// 	if uint(offset) >= uint(len(src)) {
+// 		return "", errors.New("invalid offset")
+// 	}
+// 	var start, end int
+// 	for i := offset; i < len(src); i++ {
+// 		if isBoundary(src[i]) {
+// 			end = i
+// 			break
+// 		}
+// 	}
+// 	for i := offset; i >= 0; i-- {
+// 		if isBoundary(src[i]) {
+// 			start = i + 1
+// 			break
+// 		}
+// 	}
+// 	if start >= end {
+// 		return "", errors.New("no symbol at offset")
+// 	}
+// 	return src[start:end], nil
+// }
+
 func (r *ReferencesRequest) GuruWhat() (*GuruWhatResponse, error) {
 	// TODO (CEV): support the source being modified
 

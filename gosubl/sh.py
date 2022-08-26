@@ -9,6 +9,8 @@ import sublime
 import subprocess
 import time
 
+from typing import TypedDict
+
 try:
     STARTUPINFO = subprocess.STARTUPINFO()
     STARTUPINFO.dwFlags |= subprocess.STARTF_USESHOWWINDOW
@@ -106,7 +108,7 @@ class _command(object):
 
         pr = self.proc()
         if pr.ok:
-            ev.debug("sh.run", pr)
+            # ev.debug("sh.run", pr)
 
             try:
                 out, err = pr.p.communicate(input=pr.input)
@@ -247,16 +249,16 @@ def gs_init(_={}):
 
     dur = time.time() - start
 
-    ev.debug(
-        "sh.init",
-        {
-            "cr.init": cr,
-            "cr.go": cr_go,
-            "go_version": GO_VERSION,
-            "env": _env_ext,
-            "dur": dur,
-        },
-    )
+    # ev.debug(
+    #     "sh.init",
+    #     {
+    #         "cr.init": cr,
+    #         "cr.go": cr_go,
+    #         "go_version": GO_VERSION,
+    #         "env": _env_ext,
+    #         "dur": dur,
+    #     },
+    # )
 
     cmd_lst = []
     for v in cr.cmd_lst:
@@ -296,6 +298,20 @@ def gs_gopath(fn, roots=[]):
                 l.append(p)
     l.reverse()
     return psep.join(l)
+
+
+class CompleteEnviron(TypedDict):
+    GOROOT: str
+    GOPATH: str
+
+
+# WARN: figure out which features of env() we're losing here
+def complete_environ() -> CompleteEnviron:
+    if gs.setting("use_gs_gopath") is True:
+        e = env()
+        return {"GOROOT": e.get("GOROOT", None), "GOPATH": e.get("GOPATH", None)}
+    else:
+        return {"GOROOT": "", "GOPATH": ""}
 
 
 # TODO (CEV): don't copy when we're just accessing one field

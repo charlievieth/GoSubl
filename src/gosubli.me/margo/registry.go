@@ -1,12 +1,11 @@
 package main
 
 import (
+	"sort"
 	"sync"
 )
 
-var (
-	registry = &Registry{m: map[string]Method{}}
-)
+var registry = &Registry{m: map[string]Method{}}
 
 type Method func(*Broker) Caller
 
@@ -34,6 +33,17 @@ func (r *Registry) Register(name string, method Method) {
 	}
 
 	r.m[name] = method
+}
+
+func (r *Registry) Methods() []string {
+	r.lck.RLock()
+	defer r.lck.RUnlock()
+	a := make([]string, 0, len(r.m))
+	for k := range r.m {
+		a = append(a, k)
+	}
+	sort.Strings(a)
+	return a
 }
 
 func (r *Registry) Lookup(name string) Method {

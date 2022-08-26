@@ -86,6 +86,7 @@ func (r *RenameRequest) Call() (interface{}, string) {
 		goplsExe, "rename", "-write",
 		fmt.Sprintf("%s:#%d", r.Filename, r.Offset), r.To,
 	)
+	// TODO: dir should probably be the project root
 	cmd.Dir = filepath.Dir(r.Filename)
 
 	var errMsg string
@@ -101,6 +102,12 @@ func (r *RenameRequest) Call() (interface{}, string) {
 		logger.Info("rename: command duration", zap.String("filename", r.Filename),
 			zap.Duration("duration", time.Since(start)))
 	}
+	// TODO: format all changed files and not just the current file
+	if err == nil {
+		cmd := exec.Command("gofmt", "-s", "-w", r.Filename)
+		cmd.Dir = filepath.Dir(r.Filename)
+		cmd.Run()
+	}
 
 	// TODO: we probably don't need a response
 	return &RenameResponse{Success: errMsg == "", Error: errMsg}, errMsg
@@ -113,3 +120,50 @@ func init() {
 		}
 	})
 }
+
+/*
+func (r *RenameRequest) Call_Rename() (interface{}, string) {
+	orig := build.Default
+	if r.Env != nil {
+		if s := r.Env["GOPATH"]; s != "" && isDir(s) {
+			orig.GOPATH = filepath.Clean(s)
+		}
+		if s := r.Env["GOROOT"]; s != "" && isDir(s) {
+			orig.GOROOT = filepath.Clean(s)
+		}
+		if s := r.Env["GOOS"]; s != "" {
+			orig.GOOS = s
+		}
+	}
+
+	ctxt, err := buildutil.MatchContext(&orig, r.Filename, nil)
+	if err != nil {
+		return "", errStr(err)
+	}
+
+	// TODO: log errors
+	root, err := contextutil.FindProjectRoot(ctxt, r.Filename)
+	if err != nil {
+		logger.Error("rename: finding project root", zap.Error(err),
+			zap.String("filename", r.Filename))
+		root = filepath.Dir(r.Filename)
+	}
+	scopedCtxt, err := contextutil.ScopedContext(ctxt, root)
+	if err != nil {
+		logger.Error("rename: error creating ScopedContext", zap.Error(err),
+			zap.String("filename", r.Filename), zap.String("root", root))
+	} else {
+		ctxt = scopedCtxt
+	}
+
+	offset := fmt.Sprintf("%s:#%d", r.Filename, r.Offset)
+	if err := rename.Main(ctxt, offset, "", r.To); err != nil {
+		logger.Error("rename: error", zap.String("filename", r.Filename),
+			zap.Error(err))
+		errMsg := err.Error()
+		return &RenameResponse{Success: false, Error: errMsg}, errMsg
+	}
+
+	return &RenameResponse{Success: true}, ""
+}
+*/

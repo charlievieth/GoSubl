@@ -123,11 +123,12 @@
 		"command": "gs_test",
 		"context": [{ "key": "selector", "operator": "equal", "operand": "source.go" }]
 	},
-	{
-		"keys": ["super+.", "shift+space"],
-		"command": "gs_show_call_tip",
-		"context": [{ "key": "selector", "operator": "equal", "operand": "source.go" }]
-	},
+	// CEV: removing this since I don't use it
+	//{
+	//	"keys": ["super+.", "shift+space"],
+	//	"command": "gs_show_call_tip",
+	//	"context": [{ "key": "selector", "operator": "equal", "operand": "source.go" }]
+	//},
 	{
 		"keys": ["super+9"],
 		"command": "gs9o_open"

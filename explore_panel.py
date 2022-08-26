@@ -2,13 +2,14 @@
 # This program is Free Software see LICENSE file for details
 
 from time import sleep
-
 from typing import List
 from typing import Optional
 
 import sublime
-
 from Default.history_list import get_jump_history_for_view
+
+from gosubl.utils import view_file_name
+from gosubl.utils import view_is_loaded
 
 
 class ExplorerPanel:
@@ -197,21 +198,3 @@ class Jumper:
             sublime.set_timeout(
                 lambda: view.erase_regions(region_name), delta + 300
             )
-
-
-def view_file_name(view: sublime.View) -> str:
-    name = view.file_name()
-    if name:
-        return name
-    else:
-        return ""
-
-
-def view_is_loaded(view: sublime.View) -> bool:
-    i = 0
-    loading = view.is_loading()
-    while loading and i < 5:
-        i += 1
-        sleep(0.05)
-        loading = view.is_loading()
-    return not loading

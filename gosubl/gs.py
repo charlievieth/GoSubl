@@ -24,6 +24,7 @@ from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Tuple
+from typing import TypedDict
 from typing import TypeVar
 from typing import Union
 from typing import IO
@@ -55,14 +56,15 @@ NAME = "GoSubl"
 MAX_LOG_BYTES = 5 * 1024 * 1024
 LOGFILE: IO = None
 
-mg9_send_q = queue.Queue()
-mg9_recv_q = queue.Queue()
+mg9_send_q: "queue.Queue[Tuple[str, Dict[str, Any], Callable]]" = queue.Queue()
+mg9_recv_q: "queue.Queue[str]" = queue.Queue()
 
+# WARN: this can be removed
 _attr_lck = threading.Lock()
-_attr = {}
+_attr: Dict[str, Any] = {}
 
 _checked_lck = threading.Lock()
-_checked = {}
+_checked: Dict[str, bool] = {}
 
 
 # TODO: _env_lck appears to not be used.
@@ -114,23 +116,16 @@ _default_settings = {
 }
 _settings: Dict[str, Any] = copy.copy(_default_settings)
 
-
-CLASS_PREFIXES = {
-    "const": u"\u0196",
-    "func": u"\u0192",
-    "type": u"\u0288",
-    "var": u"\u03BD",
-    "package": u"package \u03C1",
-}
-
-NAME_PREFIXES = {"interface": u"\u00A1"}
-
 # TODO: Update via margo
 GOARCHES = ["386", "amd64", "arm"]
 
 # TODO: Update via margo
 GOOSES = ["darwin", "freebsd", "linux", "netbsd", "openbsd", "plan9", "windows", "unix"]
 
+# TODO: is there another way to set the scope "selector" for completions
+# so that we can remove this?
+#
+# TODO: move this gscomplete.py
 IGNORED_SCOPES = frozenset(
     [
         "string.quoted.double.go",
@@ -157,7 +152,12 @@ USER_DIR = os.path.expanduser("~").replace("\\", "/").rstrip("/")
 T = TypeVar("T")
 # WARN: remove if not used
 
-TaskT = Dict[str, Union[str, datetime.datetime, Callable[[], None]]]
+
+class SMTaskItem(TypedDict):
+    start: datetime.datetime
+    domain: str
+    message: str
+    cancel: Optional[Callable]
 
 
 # WARN WARN WARN
@@ -562,12 +562,14 @@ def view_fn(view: sublime.View) -> str:
         return ""
 
 
+# def view_entire_content_region(view: sublime.View) -> sublime.Region:
+#     return sublime.Region(0, view.size())
+
+
 def view_src(view: sublime.View) -> str:
     """Returns the string source of the Sublime view.
     """
-    if view:
-        return view.substr(sublime.Region(0, view.size()))
-    return ""
+    return view.substr(sublime.Region(0, view.size())) if view else ""
 
 
 def win_view(
@@ -649,6 +651,7 @@ def focus(
     sublime.set_timeout(lambda: do_focus(fn, row, col, win, focus_pat, cb), timeout)
 
 
+# WARN: what does this do and why do we need it?
 def sm_cb() -> None:
     global sm_text
     global sm_set_text
@@ -676,7 +679,7 @@ def sm_cb() -> None:
 
     if s != sm_set_text:
         sm_set_text = s
-        st2_status_message(s)
+        sublime.status_message(s)
 
     sched_sm_cb()
 
@@ -749,12 +752,12 @@ def end(task_id: str) -> None:
             del sm_tasks[task_id]
 
 
-def task(task_id: str) -> Optional[TaskT]:
+def task(task_id: str) -> Optional[SMTaskItem]:
     with sm_lck:
         return sm_tasks.get(task_id, None)
 
 
-def task_list() -> List[Tuple[str, TaskT]]:
+def task_list() -> List[Tuple[str, SMTaskItem]]:
     with sm_lck:
         return sorted(sm_tasks.items())
 
@@ -892,19 +895,13 @@ def tm_path(name: str) -> str:
     elif name == "doc":
         return pkg + "GsDoc.hidden-tmLanguage"
     elif name == "go":
-        return pkg + "syntax/GoSublime-Go.tmLanguage"
+        return pkg + "syntax/GoSublime-Go.sublime-syntax"
     elif name == "gohtml":
         return pkg + "syntax/GoSublime-HTML.tmLanguage"
-    elif name == "go":
-        so = sublime.load_settings("GoSublime-next.sublime-settings")
-        if so:
-            exts: Optional[List[str]] = so.get("extensions")
-            if exts and "go" in exts:
-                return pkg + "GoSublime-next.tmLanguage"
-
-    # WARN: should we raise an execption here ???
-    notice(NAME, "invalid settings file name: %s" % name)
-    return ""
+    else:
+        # WARN: should we raise an execption here ???
+        notice(NAME, "invalid settings file name: %s" % name)
+        return ""
 
 
 def packages_dir() -> str:
@@ -928,10 +925,11 @@ def mkdirp(fn: str) -> None:
     """Recursively creates a directory rooted at fn, if directory fn does not
     exist.
     """
-    try:
-        os.makedirs(fn)
-    except:
-        pass
+    if not os.path.exists(fn):
+        try:
+            os.makedirs(fn, exist_ok=True)
+        except:
+            pass
 
 
 def _home_path(*paths: str) -> str:
@@ -1047,8 +1045,8 @@ def set_attr(k: str, v: Any) -> None:
 def del_attr(k: str) -> Optional[Any]:
     """Deletes the _attr with key k.
     """
-    v = None
     with _attr_lck:
+        v = None
         if k in _attr:
             v = _attr[k]
             del _attr[k]
@@ -1089,16 +1087,12 @@ sm_lck = threading.Lock()
 # TODO (CEV): replace this with a dedicated counter
 sm_task_counter = 0
 # WARN (CEV): make sure this is correct or use a typed dict
-sm_tasks: Dict[str, TaskT] = {}
+sm_tasks: Dict[str, SMTaskItem] = {}
 sm_frame = 0
 sm_frames = (u"\u25D2", u"\u25D1", u"\u25D3", u"\u25D0")
 sm_tm = datetime.datetime.now()
 sm_text = ""
 sm_set_text = ""
-
-st2_status_message = sublime.status_message
-sublime.status_message = status_message
-
 
 # WARN (CEV): WTF is this ???
 try:

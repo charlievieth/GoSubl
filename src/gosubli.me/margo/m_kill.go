@@ -57,21 +57,22 @@ func killCmd(id string) bool {
 	}
 
 	cmdWatchLck.Lock()
-	defer cmdWatchLck.Unlock()
-
-	if c, ok := cmdWatchlist[id]; ok {
+	c, ok := cmdWatchlist[id]
+	cmdWatchLck.Unlock()
+	if ok && c != nil {
 		// the primary use-case for these functions are remote requests to cancel the proces
 		// so we won't remove it from the map
 		c.Process.Kill()
 		// neither wait nor release are called because the cmd owner should be waiting on it
-		return true
+		// c.Process.Release()
 	}
-	return false
+	return ok
 }
 
 func init() {
 	byeDefer(func() {
 		cmdWatchLck.Lock()
+		defer cmdWatchLck.Unlock()
 		wg := new(sync.WaitGroup)
 		for _, c := range cmdWatchlist {
 			if c == nil || c.Process == nil {
@@ -85,7 +86,6 @@ func init() {
 			}(c)
 		}
 		wg.Wait()
-		cmdWatchLck.Unlock()
 	})
 
 	registry.Register("kill", func(b *Broker) Caller {

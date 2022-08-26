@@ -1,9 +1,13 @@
-from gosubl import gs
-from gosubl import mg9
 import os
 import re
+from typing import Tuple
+from typing import Optional
+
 import sublime
 import sublime_plugin
+
+from gosubl import gs
+from gosubl import mg9
 
 DOMAIN = "GsTest"
 
@@ -11,11 +15,11 @@ TEST_PAT = re.compile(r"^((Test|Example|Benchmark)\w*)")
 
 
 class GsTestCommand(sublime_plugin.WindowCommand):
-    def is_enabled(self):
+    def is_enabled(self) -> bool:
         return gs.is_go_source_view(self.window.active_view())
 
-    def run(self):
-        def f(res, err):
+    def run(self) -> None:
+        def f(res, err: Optional[str]) -> None:
             if err:
                 gs.notify(DOMAIN, err)
                 return
@@ -69,15 +73,19 @@ class GsTestCommand(sublime_plugin.WindowCommand):
         if view.file_name():
             pkg_dir = os.path.dirname(view.file_name())
 
+        # TODO TODO TODO TODO TODO TODO TODO TODO TODO
+        # Use this
+        # tests = mg9.list_go_tests(vfn)
+        # print(tests)
         mg9.declarations(vfn, src, pkg_dir, f)
 
 
-def match_prefix_name(s):
+def match_prefix_name(s: str) -> Tuple[str, str]:
     m = TEST_PAT.match(s)
     return (m.group(2), m.group(1)) if m else ("", "")
 
 
-def handle_action(view, action):
+def handle_action(view: sublime.View, action: str) -> bool:
     fn = view.file_name()
     prefix, name = match_prefix_name(view.substr(view.word(gs.sel(view))))
     ok = prefix and fn and fn.endswith("_test.go")

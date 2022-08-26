@@ -73,7 +73,12 @@ def gs_init(m={}) -> None:
 class Request:
     __slots__ = "callback", "method", "token", "_start"
 
-    def __init__(self, callback: Callable, method: str = "", token: str = "") -> None:
+    def __init__(
+        self,
+        callback: Callable,
+        method: str = "",
+        token: str = "",
+    ) -> None:
         self.callback = callback
         self.method = method
         self.token = token or "mg9.autoken.{}.{}".format(
@@ -249,7 +254,7 @@ def install(aso_install_vesion, force_install):
             "GO111MODULE": "on",
         }
 
-        ev.debug("%s.build" % DOMAIN, {"cmd": cmd.cmd_lst, "cwd": cmd.wd})
+        # ev.debug("%s.build" % DOMAIN, {"cmd": cmd.cmd_lst, "cwd": cmd.wd})
 
         cr = cmd.run()
         m_out = "cmd: `%s`\nstdout: `%s`\nstderr: `%s`\nexception: `%s`" % (
@@ -358,114 +363,79 @@ def install(aso_install_vesion, force_install):
             report_x()
 
 
-class LRUCache(OrderedDict):
-    def __init__(self, maxsize=128) -> None:
-        self._maxsize = maxsize
-        self._lock = threading.RLock()
-        super().__init__()
-
-    @property
-    def maxsize(self) -> int:
-        return self._maxsize
-
-    def __getitem__(self, key):
-        with self._lock:
-            value = OrderedDict.__getitem__(self, key)
-            # popitem() deletes the item from it's ordered map before
-            # caling dict.pop() so ignore the move_to_end() exception
-            try:
-                OrderedDict.move_to_end(self, key, last=False)
-            except KeyError:
-                pass
-            return value
-
-    def __setitem__(self, key, value):
-        with self._lock:
-            if len(self) >= self._maxsize and key not in self:
-                OrderedDict.popitem(self, last=True)
-            OrderedDict.__setitem__(self, key, value)
-            OrderedDict.move_to_end(self, key, last=False)
-
-    def __delitem__(self, key):
-        with self._lock:
-            OrderedDict.__delitem__(self, key)
-
-    def __contains__(self, key):
-        with self._lock:
-            return OrderedDict.__contains__(self, key)
-
-    def __iter__(self):
-        with self._lock:
-            return OrderedDict.__iter__(self)
-
-    def __reversed__(self):
-        with self._lock:
-            return OrderedDict.__reversed__(self)
-
-    def clear(self):
-        with self._lock:
-            OrderedDict.clear(self)
+CompleteCandidate = TypedDict('CompleteCandidate', {
+    'class': str,
+    'package': Optional[str],  # Empty for packages
+    'name': str,
+    'type': Optional[str],  # Empty for packages
+    'receiver': Optional[str],
+})
 
 
-calltip_cache = LRUCache(maxsize=128)
+# TODO: make the Candidate optional as well
+CompleteResponse = Tuple[List[CompleteCandidate], Optional[str]]
 
 
-def calltip(fn, src, pos, quiet, f):
+# TODO: use view.id() and view.change_id()[0] as the cache key
+def calltip(fn: str, src: str, pos: int, quiet: bool, f: Callable) -> None:
     tid = ""
     if not quiet:
         tid = gs.begin(DOMAIN, "Fetching calltips")
 
-    # Move pos to the end of the symbol to improve cache performance
-    for i in range(pos, len(src)):
-        c = src[i]
-        if not c.isalnum() and c != '_':
-            if i > pos:
-                pos = i - 1
-            break
-
-    cache_key = (fn, hash(src), len(src), pos)
-
-    if cache_key in calltip_cache:
-        res, err = calltip_cache[cache_key]
-        if tid:
-            gs.end(tid)
-        f(res, err)
-        return
+    # # Move pos to the end of the symbol to improve cache performance
+    # for i in range(pos, len(src)):
+    #     c = src[i]
+    #     if not c.isalnum() and c != '_':
+    #         if i > pos:
+    #             pos = i - 1
+    #         break
 
     def cb(res, err):
         if tid:
             gs.end(tid)
 
         res = gs.dval(res.get("Candidates"), [])
-        calltip_cache[cache_key] = (res, err)
         f(res, err)
 
-    return acall("gocode_calltip", _complete_opts(fn, src, pos, True), cb)
+    acall("gocode_calltip", _complete_opts(fn, src, pos, True), cb)
 
 
-def complete(fn, src, pos):
-    builtins = (
-        gs.setting("autocomplete_builtins") is True
-        or gs.setting("complete_builtins") is True
-    )
-    res, err = bcall("gocode_complete", _complete_opts(fn, src, pos, builtins))
-    res = gs.dval(res.get("Candidates"), [])
-    return res, err
-
-
-def _complete_opts(fn, src, pos, builtins):
-    nv = sh.env()
+def _complete_opts(
+    filename: str,
+    source: str,
+    cursor: int,
+    builtins: bool,
+) -> Dict[str, Any]:
     return {
-        "Dir": gs.basedir_or_cwd(fn),
+        "Dir": gs.basedir_or_cwd(filename),
         "Builtins": builtins,
-        "Fn": fn or "",
-        "Src": src or "",
-        "Pos": pos or 0,
-        "Home": sh.vdir(),
+        "Fn": filename or "",
+        "Src": source or "",
+        "Pos": cursor or 0,
+        # WARN: removing "Home" since we don't use it
+        # "Home": sh.vdir(),
         "Autoinst": gs.setting("autoinst"),
         "InstallSuffix": gs.setting("installsuffix", ""),
-        "Env": {"GOROOT": nv.get("GOROOT", ""), "GOPATH": nv.get("GOPATH", "")},
+        # TODO: can we just omit this if there are no GOPATH overrides
+        # and what are we missing by not using the full sh.env() func?
+        "Env": sh.complete_environ(),
     }
+
+
+def complete(
+    filename: str,
+    souce: str,
+    cursor: int,
+) -> Tuple[List[CompleteCandidate], Optional[str]]:
+    builtins = bool(
+        gs.setting("autocomplete_builtins") is True or
+        gs.setting("complete_builtins") is True
+    )
+    res, err = bcall(
+        "gocode_complete",
+        _complete_opts(filename, souce, cursor, builtins),
+    )
+    return gs.dval(res.get("Candidates"), []), err
 
 
 def fmt(fn, src):
@@ -521,6 +491,78 @@ def pkg_dirs(f):
         f(res, err)
 
     acall("pkg_dirs", {"env": sh.env()}, cb)
+
+
+# class TestFunc:
+#     __slots__ = "name", "filename", "line"
+#
+#     def __init__(self, name: str, filename: str, line: int):
+#         self.name = name
+#         self.filename = filename
+#         self.line = line
+#
+#
+# class ListTestsResponse:
+#     __slots__ = "tests", "benchmarks", "examples", "fuzztests"
+#
+#     def __init__(
+#         self,
+#         tests: Optional[List[TestFunc]] = None,
+#         benchmarks: Optional[List[TestFunc]] = None,
+#         examples: Optional[List[TestFunc]] = None,
+#         fuzztests: Optional[List[TestFunc]] = None,
+#     ):
+#         self.tests = tests
+#         self.benchmarks = benchmarks
+#         self.examples = examples
+#         self.fuzztests = fuzztests
+#
+#     @classmethod
+#     def from_json(cls, data: Dict[str, Any]) -> "ListTestsResponse":
+#         return None
+#
+#     def is_empty(self) -> bool:
+#         return (
+#             not self.tests and not self.benchmarks and
+#             not self.examples and not self.fuzztests
+#         )
+
+
+# type TestFunc struct {
+#     Name     string `json:"name"`
+#     Filename string `json:"filename"`
+#     Line     int    `json:"line"`
+# }
+#
+# type TestFunctions struct {
+#     Tests      []TestFunc `json:"tests,omitempty"`
+#     Benchmarks []TestFunc `json:"benchmarks,omitempty"`
+#     Examples   []TestFunc `json:"examples,omitempty"`
+#     FuzzTests  []TestFunc `json:"fuzz_tests,omitempty"`
+# }
+
+
+class TestFunc(TypedDict):
+    name: str
+    filename: str
+    line: int
+
+
+class ListTestsResponse(TypedDict):
+    tests: Optional[List[TestFunc]]
+    benchmarks: Optional[List[TestFunc]]
+    examples: Optional[List[TestFunc]]
+    fuzz_tests: Optional[List[TestFunc]]
+
+
+def list_go_tests(filename: str) -> Tuple[ListTestsResponse, Optional[str]]:
+    raw, err = bcall("list_tests", {"filename": filename})
+    return {
+        "tests": raw.get("tests"),
+        "benchmarks": raw.get("benchmarks"),
+        "examples": raw.get("examples"),
+        "fuzz_tests": raw.get("fuzz_tests"),
+    }, err
 
 
 def declarations(fn, src, pkg_dir, f):
@@ -618,13 +660,13 @@ def share(src, f):
         f({}, "Share cancelled")
 
 
-def acall(method, arg, cb):
+def acall(method: str, arg: Dict[str, Any], cb: Callable) -> None:
     """Asynchronous send to margo.
     """
     gs.mg9_send_q.put((method, arg, cb))
 
 
-def bcall(method, arg):
+def bcall(method: str, arg: Dict[str, Any]) -> Tuple[Dict[str, Any], Optional[str]]:
     """Synchronous send to margo.
     """
     if _inst_state() != "done":
@@ -675,7 +717,7 @@ def _recv():
                     # r, _ = gs.json_decode(ln, {})
                     r, err = gs.json_decode(ln, {})
                     if err:
-                        print("### RECV (ERROR): {}".format(err))  # WARN
+                        print("### RECV (ERROR): {}\n{}\n###".format(err, ln))  # WARN
 
                     token = r.get("token", "")
                     tag = r.get("tag", "")
@@ -698,19 +740,19 @@ def _recv():
 
                         err = r.get("error", "")
 
-                        # TODO: Check if debug is enabled (len()).
-                        ev.debug(
-                            DOMAIN,
-                            "margo response: %s"
-                            % {
-                                "method": req.method,
-                                "tag": tag,
-                                "token": token,
-                                "dur": "%0.3fs" % req.duration(),
-                                "err": err,
-                                "size": "%0.1fK" % (len(ln) / 1024.0),
-                            },
-                        )
+                        # # TODO: Check if debug is enabled (len()).
+                        # ev.debug(
+                        #     DOMAIN,
+                        #     "margo response: %s"
+                        #     % {
+                        #         "method": req.method,
+                        #         "tag": tag,
+                        #         "token": token,
+                        #         "dur": "%0.3fs" % req.duration(),
+                        #         "err": err,
+                        #         "size": "%0.1fK" % (len(ln) / 1024.0),
+                        #     },
+                        # )
 
                         # CEV: req.f is the callback 'cb' set in _send().
                         #
@@ -727,7 +769,8 @@ def _recv():
                         except Exception:
                             gs.error_traceback(DOMAIN)
                     else:
-                        ev.debug(DOMAIN, "Ignoring margo: token: %s" % token)
+                        pass
+                        # ev.debug(DOMAIN, "Ignoring margo: token: %s" % token)
             except Exception:
                 gs.println(gs.traceback())
         except Exception:
@@ -776,6 +819,7 @@ def _send():
                         cmd += ["-pprof-addr", about.MARGO_PPROF_ADDR]
 
                     c = sh.Command(cmd)
+                    c.env = {"GOGC", "200"}
                     c.stderr = gs.LOGFILE
 
                     # WARN WARN WARN WARN WARN WARN WARN WARN WARN WARN WARN
@@ -839,7 +883,7 @@ def _send():
                 # WARN WARN WARN WARN WARN WARN WARN WARN WARN WARN WARN WARN
                 # WARN WARN WARN WARN WARN WARN WARN WARN WARN WARN WARN WARN
 
-                ev.debug(DOMAIN, "margo request: {}".format(req.header()))
+                # ev.debug(DOMAIN, "margo request: {}".format(req.header()))
                 data, err = gs.json_encode({
                     "method": req.method,
                     "token": req.token,
@@ -883,6 +927,7 @@ def _cb_err(cb, err):
     _call(cb, {}, err)
 
 
+# TODO: see if we can use asyncio for this
 def _read_stdout(proc):
     """Reads lines from proc stdout into the mg9_recv_q queue.Queue, which
     is polled by _recv().

@@ -125,7 +125,7 @@ func main() {
 	if maxMem <= 0 {
 		maxMem = maxMemDefault
 	}
-	startOomKiller(maxMem)
+	// startOomKiller(maxMem)
 
 	if dump_env {
 		m := defaultEnv()

@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -149,8 +148,10 @@ func (b *Broker) SendNoLog(resp Response) error {
 	// b.out.Flush()
 	b.Unlock()
 
-	buf.Reset()
-	b.bufPool.Put(buf)
+	if buf.Cap() < 1024*1024 {
+		buf.Reset()
+		b.bufPool.Put(buf)
+	}
 
 	// b.w.Write(s)
 	// b.w.Write([]byte{'\n'})
@@ -194,7 +195,8 @@ func (b *Broker) handleRequest(req *Request) error {
 
 	m := registry.Lookup(req.Method)
 	if m == nil {
-		return errors.New("broker: invald method: " + req.Method)
+		return fmt.Errorf("broker: invald method: %q: allowed methods: %q",
+			req.Method, registry.Methods())
 	}
 	cl := m(b)
 

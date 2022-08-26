@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+// TODO: delete me
 func startOomKiller(maxMb int) {
 	go func() {
 		const M = uint64(1024 * 1024)

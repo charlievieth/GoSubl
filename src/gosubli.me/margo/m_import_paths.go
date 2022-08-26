@@ -140,7 +140,7 @@ func init() {
 
 func isRoot(dir string) bool {
 	// TODO: add ".svn" ".hg" ???
-	for _, name := range []string{"go.mod", ".git", "vendor", "glide.yaml", "Gopkg.toml"} {
+	for _, name := range []string{"go.mod", "go.work", ".git", "vendor", "glide.yaml"} {
 		if _, err := os.Lstat(dir + "/" + name); err == nil {
 			return true
 		}

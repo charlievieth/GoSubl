@@ -3,7 +3,7 @@ module gosubli.me/margo
 go 1.18
 
 require (
-	github.com/charlievieth/buildutil v0.0.14
+	github.com/charlievieth/buildutil v0.0.15
 	github.com/charlievieth/gocode v0.0.9
 	github.com/charlievieth/imports v0.0.7
 	github.com/charlievieth/pkgs v0.0.8
@@ -14,7 +14,7 @@ require (
 	go.uber.org/multierr v1.6.0
 	go.uber.org/zap v1.21.0
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
-	golang.org/x/sys v0.0.0-20220804214406-8e32c043e418
+	golang.org/x/sys v0.0.0-20220808155132-1c4a2a72c664
 	golang.org/x/tools v0.1.13-0.20220805170418-06d96ee8fcfe
 )
 
@@ -28,6 +28,9 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/mdempsky/gocode v1.2.3 => github.com/charlievieth/gocode v0.0.0-20220610040442-416ee8330aba
+// replace github.com/mdempsky/gocode v1.2.3 => github.com/charlievieth/gocode@mdempsky-gocode
+// replace github.com/mdempsky/gocode v1.2.3 => github.com/charlievieth/gocode v0.0.0-20220810040442-416ee8330aba
+// replace github.com/mdempsky/gocode v1.2.3 => github.com/charlievieth/gocode v0.0.0-20220807225312-b09495ce8610
+replace github.com/mdempsky/gocode v1.2.3 => /Users/cvieth/go/src/github.com/mdempsky/gocode
 
 // eplace github.com/mdempsky/gocode v1.2.3 => github.com/charlievieth/gocode v0.0.0-20220604025241-416ee8330aba
