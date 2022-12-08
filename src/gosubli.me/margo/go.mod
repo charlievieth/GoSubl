@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/charlievieth/buildutil v0.0.15
 	github.com/charlievieth/gocode v0.0.9
-	github.com/charlievieth/imports v0.0.8
+	github.com/charlievieth/imports v0.0.9
 	github.com/charlievieth/pkgs v0.0.8
 	github.com/charlievieth/reonce v1.2.1
 	github.com/charlievieth/xtools v0.0.0-20211105143448-950ad532c57d

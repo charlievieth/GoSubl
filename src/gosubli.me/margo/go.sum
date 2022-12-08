@@ -8,8 +8,8 @@ github.com/charlievieth/fastwalk v1.0.1 h1:jW01w8OCFdKS9JvAcnI+JHhWU/FuIEmNb24Ri
 github.com/charlievieth/fastwalk v1.0.1/go.mod h1:dryXgMJyGHbMrAmmnF0/EJNBbZaihlwcNud5IuGyogU=
 github.com/charlievieth/gocode v0.0.9 h1:3gLgSDn0TvrA1i3nOJo7qjc98t2QyWy1qWsXOAxFX2U=
 github.com/charlievieth/gocode v0.0.9/go.mod h1:j/5iWh9G+aNYsmypvf+M+4DE3RrZ6FwGTegiy4f//mU=
-github.com/charlievieth/imports v0.0.8 h1:Ovf7qx7pZ/CTyBWSoAl2Zi+AjXxlHg8vhqWpqQIRXbw=
-github.com/charlievieth/imports v0.0.8/go.mod h1:0TmPxeT04UnQ7nkxDO0iDAbJe8XO62D9JF5xiOgy7aM=
+github.com/charlievieth/imports v0.0.9 h1:ctj/96kJzTfGbv7T8f9KXDXdyh810XD1BdLhdJRVzx0=
+github.com/charlievieth/imports v0.0.9/go.mod h1:moYfTRFDz5AT5Vninwc/ZqUFwhwFr99T8C59nn/RGGs=
 github.com/charlievieth/pkgs v0.0.8 h1:XlzvvoMlT17nCYbs19bLW537LeoWr32guI/vtHGtfSc=
 github.com/charlievieth/pkgs v0.0.8/go.mod h1:V7dfPFOjB/lAmISMMSzy69zq8cp9TImunjxyx7DO3xk=
 github.com/charlievieth/reonce v1.2.1 h1:V3Heg6/muvguQwFb+T02+NMrragkDy/DgTgH3Z6ogXc=
