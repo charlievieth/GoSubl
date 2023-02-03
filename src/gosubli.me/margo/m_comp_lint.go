@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"crypto/md5"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"go/build"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -184,6 +186,48 @@ func (c *CompLintRequest) isGenerateCommand(ctxt *build.Context, pkgName string)
 	return false
 }
 
+func hasExitCode(err error, code int) bool {
+	var ee *exec.ExitError
+	if errors.As(err, &ee) {
+		return ee.ExitCode() == code
+	}
+	return false
+}
+
+func isIFlagError(out []byte, err error) bool {
+	if !hasExitCode(err, 2) {
+		return false
+	}
+	for _, msg := range []string{
+		"flag provided but not defined: -i",
+		"unknown flag -i",
+	} {
+		if bytes.Contains(out, []byte(msg)) {
+			return true
+		}
+	}
+	return false
+}
+
+func containsArg(arg string, args []string) bool {
+	for _, s := range args {
+		if s == arg {
+			return true
+		}
+	}
+	return false
+}
+
+func removeArg(remove string, args []string) []string {
+	a := args[:0]
+	for _, s := range args {
+		if s != remove {
+			a = append(a, s)
+		}
+	}
+	return a
+}
+
 func (c *CompLintRequest) Compile(src []byte) *CompLintReport {
 	pkgname, _ := buildutil.ReadPackageName(c.Filename, src)
 
@@ -207,11 +251,21 @@ func (c *CompLintRequest) Compile(src []byte) *CompLintReport {
 	default:
 		args = []string{"install"}
 	}
+	if !goCmdIFlagSupported {
+		args = removeArg("-i", args)
+	}
 
+	dir := filepath.Dir(c.Filename)
 	cmd := buildutil.GoCommand(ctxt, "go", args...)
-	cmd.Dir = filepath.Dir(c.Filename)
+	cmd.Dir = dir
 
 	out, err := cmd.CombinedOutput()
+	if err != nil && isIFlagError(out, err) && containsArg("-i", args) {
+		args = removeArg("-i", args)
+		cmd = buildutil.GoCommand(ctxt, "go", args...)
+		cmd.Dir = dir
+		out, err = cmd.CombinedOutput()
+	}
 	r := &CompLintReport{
 		Filename: c.Filename,
 	}
