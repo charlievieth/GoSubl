@@ -1,7 +1,6 @@
 import os
 import sublime
 import sublime_plugin
-import threading
 
 # WARN: we get an import error trying to use out typing package
 # so just use the stdlib's package for now.
@@ -15,8 +14,6 @@ from gosubl import mg9
 
 DOMAIN = "GsLint"
 CL_DOMAIN = "GsCompLint"
-
-sem = threading.Semaphore()
 
 
 class GoCompLintError(TypedDict):
@@ -53,22 +50,39 @@ class FileRef(object):
         self.reports: Dict[int, Report] = {}
 
 
-file_refs: Dict[str, FileRef] = {}
+class GsCompLintCommand(sublime_plugin.TextCommand):
+    def run(self, edit: sublime.Edit) -> None:
+        if gs.setting("comp_lint_enabled") is not True:
+            return
+        if self.view is None:
+            return
+        filename = self.view.file_name()
+        if not filename:
+            return
+        filename = os.path.abspath(filename)
+        mg9.acall("comp_lint", {"filename": filename}, self.callback)
 
+    def cleanup(self, view: sublime.View) -> None:
+        view.set_status(DOMAIN, "")
+        view.erase_regions(DOMAIN)
+        view.erase_regions(DOMAIN + "-zero")
 
-def highlight(fr: FileRef) -> None:
-    sel = gs.sel(fr.view).begin()
-    row, _ = fr.view.rowcol(sel)
+    def highlight_view(self, view: sublime.View, reports: Dict[int, Report]) -> None:
+        if view is None:
+            return
 
-    if fr.state == 1:
-        fr.state = 0
-        cleanup(fr.view)
+        self.cleanup(view)
+        if not reports:
+            return
+
+        sel = gs.sel(view).begin()
+        row, _ = view.rowcol(sel)
 
         regions = []
         regions0 = []
         domain0 = DOMAIN + "-zero"
-        for r in fr.reports.values():
-            line = fr.view.line(fr.view.text_point(r.row, 0))
+        for r in reports.values():
+            line = view.line(view.text_point(r.row, 0))
             pos = line.begin() + r.col
             if pos >= line.end():
                 pos = line.end()
@@ -78,100 +92,64 @@ def highlight(fr: FileRef) -> None:
                 regions.append(sublime.Region(pos, pos))
 
         if regions:
-            fr.view.add_regions(
+            view.add_regions(
                 DOMAIN, regions, "comment", "dot", sublime.DRAW_EMPTY_AS_OVERWRITE
             )
         else:
-            fr.view.erase_regions(DOMAIN)
+            view.erase_regions(DOMAIN)
 
         if regions0:
-            fr.view.add_regions(domain0, regions0, "comment", "dot", sublime.HIDDEN)
+            view.add_regions(domain0, regions0, "comment", "dot", sublime.HIDDEN)
         else:
-            fr.view.erase_regions(domain0)
+            view.erase_regions(domain0)
 
-    msg = ""
-    reps = fr.reports.copy()
-    if len(reps) > 0:
-        msg = "%s (%d)" % (DOMAIN, len(reps))
-        r = reps.get(row)
-        if r and r.msg:
-            msg = "%s: %s" % (msg, r.msg)
+        msg = ""
+        if len(reports) > 0:
+            msg = "%s (%d)" % (DOMAIN, len(reports))
+            r = reports.get(row)
+            if r and r.msg:
+                msg = "%s: %s" % (msg, r.msg)
 
-    if fr.state != 0:
-        msg = u"\u231B %s" % msg
+        view.set_status(DOMAIN, msg)
 
-    fr.view.set_status(DOMAIN, msg)
+    def highlight(self, reports: Dict[int, Report]) -> None:
+        for view in [self.view] + self.view.clones() or []:
+            if view is not None and view.is_loading() is False:
+                self.highlight_view(view, reports)
 
+    def callback(self, res: GoCompLintResponse, err: Optional[str]) -> None:
+        if err:
+            gs.notice(DOMAIN, err)
+        if "filename" not in res:
+            gs.notice(DOMAIN, "comp_lint: missing filename")
+            return
 
-def cleanup(view: sublime.View) -> None:
-    view.set_status(DOMAIN, "")
-    view.erase_regions(DOMAIN)
-    view.erase_regions(DOMAIN + "-zero")
+        reports = {}
 
-
-def ref(fn: str, validate: bool = True) -> Optional[FileRef]:
-    with sem:
-        if validate:
-            for fn in list(file_refs.keys()):
-                fr = file_refs[fn]
-                if not fr.view.window() or fn != fr.view.file_name():
-                    del file_refs[fn]
-        return file_refs.get(fn)
-
-
-def do_comp_lint_callback(res: GoCompLintResponse, err: Optional[str]) -> None:
-    if err:
-        gs.notice(DOMAIN, err)
-    if "filename" not in res:
-        gs.notice(DOMAIN, "comp_lint: missing filename")
-        return
-
-    filename = res["filename"]
-    fileref = ref(filename, False)
-    if not fileref:
-        return
-
-    reports = {}
-    if "top_level_error" in res:
-        top_level_error = res["top_level_error"]
+        top_level_error = res.get("top_level_error", "")
+        cmd_error = res.get("cmd_error", "")
         if top_level_error:
             gs.notice(DOMAIN, top_level_error)
             reports[0] = Report(row=0, col=0, msg=top_level_error)
+        elif cmd_error:
+            gs.notice(DOMAIN, cmd_error)
+            reports[0] = Report(row=0, col=0, msg=cmd_error)
 
-    if "errors" in res:
-        try:
-            for rep in res.get("errors", []):
-                if rep["file"] != filename:
+        filename = res["filename"]
+        errors = res.get("errors")
+        if errors is not None:
+            for rep in errors:
+                if rep.get("file", "") != filename:
                     continue
-                row = int(rep["row"]) - 1
-                col = int(rep["col"]) - 1
-                if col < 0:
-                    col = 0
-                msg = rep["message"]
+                msg = rep.get("message", "")
+                if not msg:
+                    continue
+                row = max(int(rep.get("row", 0)) - 1, 0)
+                col = max(int(rep.get("col", 0)) - 1, 0)
                 if row in reports:
                     reports[row].msg = "%s\n%s" % (reports[row].msg, msg)
                     reports[row].col = max(reports[row].col, col)
                 else:
                     reports[row] = Report(row=row, col=col, msg=msg)
-        except:
-            gs.notice(DOMAIN, gs.traceback())
 
-    def cb() -> None:
-        if fileref is not None:  # make mypy happy
-            fileref.reports = reports
-            fileref.state = 1
-            highlight(fileref)
-
-    sublime.set_timeout(cb, 0)
-
-
-class GsCompLintCommand(sublime_plugin.TextCommand):
-    def run(self, edit: sublime.Edit) -> None:
-        if gs.setting("comp_lint_enabled") is not True:
-            return
-
-        fn = self.view.file_name()
-        fn = os.path.abspath(fn)
-        if fn:
-            file_refs[fn] = FileRef(self.view)
-            mg9.acall("comp_lint", {"filename": fn}, do_comp_lint_callback)
+        sublime.set_timeout(lambda: self.highlight(reports), 0)
