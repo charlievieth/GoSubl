@@ -21,6 +21,7 @@ import (
 
 	"github.com/charlievieth/buildutil"
 	"golang.org/x/sync/singleflight"
+	"gosubli.me/margo/internal/lru"
 )
 
 type CompLintRequest struct {
@@ -39,6 +40,10 @@ type CompLintReport struct {
 	TopLevelError string         `json:"top_level_error,omitempty"`
 	CmdError      string         `json:"cmd_error,omitempty"`
 	Errors        []CompileError `json:"errors,omitempty"`
+}
+
+func (r *CompLintReport) NoError() bool {
+	return r.TopLevelError == "" && r.CmdError == "" && len(r.Errors) == 0
 }
 
 var compRe = regexp.MustCompile(`(?m)^([a-zA-Z]?:?[^:]+):(\d+):?(\d+)?:? (.+)$`)
@@ -277,15 +282,18 @@ func (c *CompLintRequest) Compile(src []byte) *CompLintReport {
 }
 
 var compLintGroup singleflight.Group
+var compLintCache = lru.New(128)
 
 func (c *CompLintRequest) Call() (interface{}, string) {
 	src, err := ioutil.ReadFile(c.Filename)
 	if err != nil {
 		return &CompLintReport{CmdError: err.Error()}, err.Error()
 	}
-	key := string(src)
+	key := fileCacheKey(c.Filename, string(src))
 	v, _, _ := compLintGroup.Do(key, func() (interface{}, error) {
-		return c.Compile(src), nil
+		r := c.Compile(src)
+		compLintCache.Add(key, r.NoError())
+		return r, nil
 	})
 	r, ok := v.(*CompLintReport)
 	if !ok {

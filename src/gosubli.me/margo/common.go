@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"hash/maphash"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -176,4 +178,18 @@ func isDir(name string) bool {
 	}
 	fi, err := os.Stat(name)
 	return err == nil && fi.IsDir()
+}
+
+var maphashSeed = maphash.MakeSeed()
+
+func fileCacheKey(name, source string) string {
+	if len(source) <= 32*1024 {
+		return source
+	}
+	// Use a hash for larger files so that we don't
+	// store the full source in memory
+	var h maphash.Hash
+	h.SetSeed(maphashSeed)
+	h.WriteString(source)
+	return fmt.Sprintf("%s|%d|%d", filepath.Clean(name), len(source), h.Sum64())
 }

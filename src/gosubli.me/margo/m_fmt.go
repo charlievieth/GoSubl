@@ -8,7 +8,6 @@ import (
 	"go/parser"
 	"go/printer"
 	"go/token"
-	"hash/maphash"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -16,18 +15,34 @@ import (
 
 	"github.com/charlievieth/imports"
 	"github.com/charlievieth/imports/gocommand"
+	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 	"gosubli.me/margo/internal/lru"
 )
 
+const DefaultFormatTimeout = time.Second
+
 // TODO: add configurable Timeout for goimports
 type FormatRequest struct {
-	Filename   string `json:"Fn"`
-	Src        string `json:"Src"`
-	Tabwidth   int    `json:"TabWidth"`
-	TabIndent  bool   `json:"TabIndent"`
-	FormatOnly bool   `json:"FormatOnly"` // Disable the insertion and deletion of imports
-	FixCGO     bool   `json:"FixCGO"`     // Enable goimports for cgo files (slow)
+	Filename  string   `json:"filename"`
+	Src       string   `json:"source"`
+	Tabwidth  int      `json:"tab_width"`
+	TabIndent bool     `json:"tab_indent"`
+	Timeout   *float64 `json:"timeout"`
+}
+
+func (r *FormatRequest) GetTimeout() time.Duration {
+	d := DefaultFormatTimeout
+	if r.Timeout != nil {
+		dd := time.Duration(float64(time.Second) * *r.Timeout)
+		if dd > 0 {
+			d = dd
+		}
+	}
+	if d > time.Millisecond*100 {
+		d -= time.Millisecond * 100 // Give ourselves 100ms to respond
+	}
+	return d
 }
 
 type FormatResponse struct {
@@ -83,7 +98,9 @@ func (*FormatRequest) hasUnsortedImports(file *ast.File) bool {
 
 var ErrCgoNotSupported = errors.New("fmt: cgo not supported")
 
-func (f *FormatRequest) callTimeout() (*FormatResponse, error) {
+func (f *FormatRequest) callTimeout(key string) (*FormatResponse, error) {
+	const FormatTimeout = time.Millisecond * 800
+
 	type Response struct {
 		Out     []byte
 		Err     error
@@ -95,6 +112,8 @@ func (f *FormatRequest) callTimeout() (*FormatResponse, error) {
 	// TODO: stop if there is an error here? We also might want
 	// to use format.Source since it handles code fragments.
 	hasCGO := false
+	_ = hasCGO // WARN WARN WARN
+
 	fset := token.NewFileSet()
 	af, parseErr := parser.ParseFile(fset, f.Filename, src, parser.ParseComments)
 	if af != nil {
@@ -106,19 +125,11 @@ func (f *FormatRequest) callTimeout() (*FormatResponse, error) {
 		}
 	}
 
-	// Fast path for cgo files when FixCGO is false
-	if hasCGO && !f.FixCGO {
-		b, err := f.formatFile(fset, af)
-		if err != nil {
-			return &FormatResponse{NoChange: true}, err
-		}
-		if bytes.Equal(src, b) {
-			return &FormatResponse{NoChange: true}, nil
-		}
-		return &FormatResponse{Src: string(b), dontCache: false}, nil
-	}
+	resCh := make(chan *Response, 2)
+	done := make(chan struct{})
+	defer close(done)
 
-	call := func(ch chan<- *Response, fn func() ([]byte, bool, error)) {
+	call := func(fn func() ([]byte, bool, error)) {
 		go func() {
 			var (
 				out       []byte
@@ -129,38 +140,51 @@ func (f *FormatRequest) callTimeout() (*FormatResponse, error) {
 				err = f.recoverErr(e)
 				out = src
 				select {
-				case ch <- &Response{out, err, isImports}:
+				case resCh <- &Response{out, err, isImports}:
 				default:
 				}
 			}
 			out, isImports, err = fn()
-			ch <- &Response{out, err, isImports}
+			resCh <- &Response{out, err, isImports}
+
+			// Cache responses even if the response timeout has expired
+			// this makes subsequent responses faster.
+			if isImports {
+				select {
+				case <-done:
+					// Timed out before we could send our response
+					res := &FormatResponse{
+						Src:      string(out),
+						NoChange: bytes.Equal(src, out),
+					}
+					f.cachePut(key, res, err)
+				default:
+					return
+				}
+			}
 		}()
 	}
 
-	resCh := make(chan *Response, 2)
-	call(resCh, func() ([]byte, bool, error) {
+	call(func() ([]byte, bool, error) {
 		// goimports is very slow when "C" is imported
-		if !hasCGO || f.FixCGO {
-			// TODO: allow configuring env var overrides
-			opts := imports.Options{
-				TabWidth:    8,
-				TabIndent:   true,
-				Comments:    true,
-				Fragment:    true,
-				SimplifyAST: true,
-				Env: &imports.ProcessEnv{
-					GocmdRunner: &gocommand.Runner{},
-					WorkingDir:  filepath.Dir(f.Filename),
-					// TODO: set the Env field
-				},
-			}
-			b, err := imports.Process(f.Filename, src, &opts)
-			return b, true, err
+		// TODO: allow configuring env var overrides
+		opts := imports.Options{
+			TabWidth:    8,
+			TabIndent:   true,
+			Comments:    true,
+			Fragment:    true,
+			SimplifyAST: true,
+			Env: &imports.ProcessEnv{
+				GocmdRunner: &gocommand.Runner{},
+				WorkingDir:  filepath.Dir(f.Filename),
+				// TODO: set the Env field
+			},
 		}
-		return nil, true, ErrCgoNotSupported
+		b, err := imports.Process(f.Filename, src, &opts)
+		return b, true, err
 	})
-	call(resCh, func() ([]byte, bool, error) {
+
+	call(func() ([]byte, bool, error) {
 		// TODO: handle code fragments
 		if af != nil && parseErr == nil {
 			b, err := f.formatFile(fset, af)
@@ -170,7 +194,7 @@ func (f *FormatRequest) callTimeout() (*FormatResponse, error) {
 	})
 
 	start := time.Now()
-	timeout := time.NewTimer(time.Millisecond * 500)
+	timeout := time.NewTimer(FormatTimeout)
 	defer timeout.Stop()
 
 	timedOut := false
@@ -225,10 +249,18 @@ Loop:
 	if res.Err != nil {
 		return &FormatResponse{NoChange: true}, res.Err
 	}
-	if bytes.Equal(src, res.Out) {
-		return &FormatResponse{NoChange: true}, nil
+
+	dontCache := false
+	if !res.Imports {
+		if v, ok := compLintCache.Get(key); ok {
+			noBuildErrors, _ := v.(bool)
+			dontCache = !noBuildErrors
+		}
 	}
-	return &FormatResponse{Src: string(res.Out), dontCache: false}, nil
+	if bytes.Equal(src, res.Out) {
+		return &FormatResponse{NoChange: true, dontCache: dontCache}, nil
+	}
+	return &FormatResponse{Src: string(res.Out), dontCache: dontCache}, nil
 
 	if timedOut {
 		return &FormatResponse{}, fmt.Errorf("fmt: timed out after: %s", time.Since(start))
@@ -255,7 +287,6 @@ func (*FormatRequest) recoverErr(err interface{}) error {
 var (
 	formatRequestGroup     singleflight.Group
 	formatRequestCache     = lru.New(128)
-	formatRequestCacheSeed = maphash.MakeSeed()
 	formatRequestCacheInit sync.Once
 )
 
@@ -295,20 +326,8 @@ func (e *FormatCacheEntry) ModTime() time.Time {
 	return time.Time{}
 }
 
-func (f *FormatRequest) cacheKey() string {
-	if len(f.Src) <= 512*1024 {
-		return f.Src
-	}
-	// Use a hash for larger files so that we don't
-	// store the full source in memory
-	var h maphash.Hash
-	h.SetSeed(formatRequestCacheSeed)
-	h.WriteString(f.Src)
-	return fmt.Sprintf("%s|%d|%d", filepath.Base(f.Filename), len(f.Src), h.Sum64())
-}
-
-func (f *FormatRequest) cacheGet() (*FormatResponse, string, bool) {
-	if v, ok := formatRequestCache.Get(f.cacheKey()); ok {
+func (f *FormatRequest) cacheGet(key string) (*FormatResponse, string, bool) {
+	if v, ok := formatRequestCache.Get(key); ok {
 		ent := v.(*FormatCacheEntry)
 		ent.UpdateModTime()
 		return ent.Res, ent.ErrStr, true
@@ -316,7 +335,7 @@ func (f *FormatRequest) cacheGet() (*FormatResponse, string, bool) {
 	return nil, "", false
 }
 
-func (f *FormatRequest) cachePut(res *FormatResponse, err error) (*FormatResponse, error) {
+func (f *FormatRequest) cachePut(key string, res *FormatResponse, err error) (*FormatResponse, error) {
 	if res.dontCache {
 		return res, err
 	}
@@ -326,17 +345,28 @@ func (f *FormatRequest) cachePut(res *FormatResponse, err error) (*FormatRespons
 		ErrStr: errStr(err),
 	}
 	e.UpdateModTime()
-	formatRequestCache.Add(f.cacheKey(), e)
+	formatRequestCache.Add(key, e)
 	return res, err
 }
 
 func (f *FormatRequest) Call() (interface{}, string) {
-	if res, errStr, ok := f.cacheGet(); ok {
+	log := logger.With(zap.String("filename", filepath.Base(f.Filename)))
+
+	key := fileCacheKey(f.Filename, f.Src)
+	if res, errStr, ok := f.cacheGet(key); ok {
+		log.Debug("format: cache hit")
 		return res, errStr
 	}
 
-	v, err, _ := formatRequestGroup.Do(f.Src, func() (v interface{}, err error) {
-		return f.cachePut(f.callTimeout())
+	v, err, _ := formatRequestGroup.Do(key, func() (v interface{}, err error) {
+		start := time.Now()
+		res, err := f.callTimeout(key)
+
+		log.Debug("format: format response", zap.Bool("no_change", res.NoChange),
+			zap.Bool("dont_cache", res.dontCache), zap.Error(err),
+			zap.Duration("time", time.Since(start)))
+
+		return f.cachePut(key, res, err)
 	})
 	res, ok := v.(*FormatResponse)
 	if !ok && err == nil {
