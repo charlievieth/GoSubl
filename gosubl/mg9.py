@@ -14,6 +14,7 @@ from typing import List
 from typing import Optional
 from typing import Tuple
 from typing import TypedDict
+from typing import cast
 
 import sublime
 
@@ -438,7 +439,13 @@ def complete(
     return gs.dval(res.get("Candidates"), []), err
 
 
-def fmt(fn, src):
+FormatResponse = TypedDict('FormatResponse', {
+    'src': str,
+    'no_change': bool,
+})
+
+
+def fmt(fn: str, src: str) -> Tuple[FormatResponse, Optional[str]]:
     x = gs.setting("fmt_cmd")
     if x:
         res, err = bcall(
@@ -447,16 +454,19 @@ def fmt(fn, src):
         )
         return res.get("out", ""), (err or res.get("err", ""))
 
+    timeout = 0.8
     res, err = bcall(
         "fmt",
         {
-            "Fn": fn or "",
-            "Src": src or "",
-            "TabIndent": gs.setting("fmt_tab_indent"),
-            "TabWidth": gs.setting("fmt_tab_width"),
+            "filename": fn or "",
+            "source": src or "",
+            "tab_indent": gs.setting("fmt_tab_indent"),
+            "tab_width": gs.setting("fmt_tab_width"),
+            "timeout": timeout,
         },
+        timeout=timeout,
     )
-    return res, err
+    return cast(FormatResponse, res), err
 
 
 def import_paths(fn, src, f):
@@ -666,7 +676,11 @@ def acall(method: str, arg: Dict[str, Any], cb: Callable) -> None:
     gs.mg9_send_q.put((method, arg, cb))
 
 
-def bcall(method: str, arg: Dict[str, Any]) -> Tuple[Dict[str, Any], Optional[str]]:
+def bcall(
+    method: str,
+    arg: Dict[str, Any],
+    timeout: Optional[float] = None,
+) -> Tuple[Dict[str, Any], Optional[str]]:
     """Synchronous send to margo.
     """
     if _inst_state() != "done":
@@ -675,8 +689,10 @@ def bcall(method: str, arg: Dict[str, Any]) -> Tuple[Dict[str, Any], Optional[st
     q = gs.queue.Queue()
 
     acall(method, arg, lambda r, e: q.put((r, e)))
+    if timeout is None:
+        timeout = gs.setting("ipc_timeout", 1)
     try:
-        res, err = q.get(True, gs.setting("ipc_timeout", 1))
+        res, err = q.get(True, timeout=timeout)
         return res, err
     except Exception as ex:
         return {}, "Blocking Call(%s): Timeout: %s" % (method, ex)
