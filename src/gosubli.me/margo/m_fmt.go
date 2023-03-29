@@ -99,8 +99,6 @@ func (*FormatRequest) hasUnsortedImports(file *ast.File) bool {
 var ErrCgoNotSupported = errors.New("fmt: cgo not supported")
 
 func (f *FormatRequest) callTimeout(key string) (*FormatResponse, error) {
-	const FormatTimeout = time.Millisecond * 800
-
 	type Response struct {
 		Out     []byte
 		Err     error
@@ -193,9 +191,10 @@ func (f *FormatRequest) callTimeout(key string) (*FormatResponse, error) {
 		return nil, false, parseErr
 	})
 
+	timeout := f.GetTimeout()
 	start := time.Now()
-	timeout := time.NewTimer(FormatTimeout)
-	defer timeout.Stop()
+	to := time.NewTimer(timeout)
+	defer to.Stop()
 
 	timedOut := false
 	respones := make([]*Response, 0, 2)
@@ -207,13 +206,13 @@ Loop:
 			if r.Imports && r.Err == nil {
 				break Loop
 			}
-		case <-timeout.C:
+		case <-to.C:
 			if timedOut {
 				break Loop
 			}
 			timedOut = true
 			// Wait a little longer for a response
-			timeout.Reset(time.Millisecond * 200)
+			to.Reset(time.Millisecond * 200)
 		}
 	}
 
