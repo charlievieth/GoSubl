@@ -163,8 +163,9 @@ class SourceLocation(object):
         return "{}:{}:{}".format(self.filename, self.line, self.col_start)
 
     def location(self) -> str:
+        name = self.relname if self.relname else self.filename
         return 'File: {} Line: {} Column: {}'.format(
-            self.filename, self.line, self.col_start,
+            name, self.line, self.col_start,
         )
 
     def usage(self) -> Dict[str, str]:

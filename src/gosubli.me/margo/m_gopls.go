@@ -348,15 +348,26 @@ func (r *ReferencesRequest) Call() (interface{}, string) {
 	all = append(all, sameProject...)
 	all = append(all, other...)
 
+	// Find a root that we can make the filename relative to for the
+	// sake of displaying a shorter file path.
+	var relRoots []string
 	if root != "" {
-		for i, s := range all {
-			name := filepath.ToSlash(s.Filename)
+		relRoots = []string{root}
+	} else {
+		for _, dir := range build.Default.SrcDirs() {
+			relRoots = append(relRoots, filepath.ToSlash(filepath.Clean(dir)))
+		}
+	}
+	for i, s := range all {
+		name := filepath.ToSlash(s.Filename)
+		for _, root := range relRoots {
 			if strings.HasPrefix(name, root) {
 				rel, err := filepath.Rel(root, name)
 				if err != nil {
 					continue
 				}
 				all[i].Relname = rel
+				break // inner loop
 			}
 		}
 	}
