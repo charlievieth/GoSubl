@@ -20,6 +20,8 @@ import (
 	"unicode"
 
 	"github.com/charlievieth/buildutil"
+	"github.com/charlievieth/buildutil/contextutil"
+	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 	"gosubli.me/margo/internal/lru"
 )
@@ -233,12 +235,31 @@ func removeArg(remove string, args []string) []string {
 	return a
 }
 
+func (c *CompLintRequest) buildTags(ctxt *build.Context) []string {
+	dir, err := contextutil.ContainingDirectory(ctxt, c.Filename, "", ".mgo_build_tags")
+	if err != nil {
+		return nil
+	}
+	name := filepath.Join(dir, ".mgo_build_tags")
+	data, err := os.ReadFile(name)
+	if err != nil {
+		logger.With(zap.String("filename", name)).
+			Warn("error reading mgo_build_tags files", zap.Error(err))
+		return nil
+	}
+	return strings.Fields(string(data))
+}
+
 func (c *CompLintRequest) Compile(src []byte) *CompLintReport {
 	pkgname, _ := buildutil.ReadPackageName(c.Filename, src)
 
 	ctxt, _ := buildutil.MatchContext(nil, c.Filename, src)
 	if ctxt == nil {
 		ctxt = &build.Default
+	}
+	if tags := c.buildTags(ctxt); len(tags) != 0 {
+		logger.Named("comp_lint").Info("mgo_build_tags", zap.Strings("tags", tags))
+		ctxt.BuildTags = append(ctxt.BuildTags, tags...)
 	}
 
 	var args []string
